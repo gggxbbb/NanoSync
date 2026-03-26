@@ -332,10 +332,36 @@ class _TaskEditDialogState extends State<TaskEditDialog> {
         return '双向同步：本地和远端双向同步，保持两边文件一致。新文件互相复制，删除操作也会同步。';
       case SyncDirection.mirror:
         return '镜像同步：让远端完全镜像本地，删除远端本地不存在的文件。谨慎使用，会删除远端文件。';
+      case SyncDirection.localOnly:
+        return '仅本地：不连接远端，仅对本地文件夹启用版本管理。适合在不同步的情况下保留文件历史记录。';
     }
   }
 
   Widget _buildRemoteConfigStep() {
+    if (_syncDirection == SyncDirection.localOnly) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: FluentTheme.of(context).brightness == Brightness.dark
+              ? Colors.white.withValues(alpha: 0.05)
+              : Colors.grey[20],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Row(
+          children: [
+            Icon(FluentIcons.info, size: 20),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '仅本地模式无需配置远端连接，此步骤将被跳过。',
+                style: TextStyle(fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -381,7 +407,8 @@ class _TaskEditDialogState extends State<TaskEditDialog> {
                 child: TextFormBox(
                   controller: _remoteUserCtrl,
                   placeholder: '请输入用户名',
-                  validator: (v) => (v == null || v.isEmpty) ? '请输入用户名' : null,
+                  validator: (v) =>
+                      (v == null || v.isEmpty) ? '请输入用户名' : null,
                 ),
               ),
             ),
@@ -390,7 +417,8 @@ class _TaskEditDialogState extends State<TaskEditDialog> {
         const SizedBox(height: 16),
         InfoLabel(
           label: '密码',
-          child: PasswordBox(controller: _remotePassCtrl, placeholder: '请输入密码'),
+          child:
+              PasswordBox(controller: _remotePassCtrl, placeholder: '请输入密码'),
         ),
         const SizedBox(height: 16),
         InfoLabel(
@@ -407,7 +435,8 @@ class _TaskEditDialogState extends State<TaskEditDialog> {
             FilledButton(
               onPressed: _testingConnection ? null : _testConnection,
               child: _testingConnection
-                  ? const SizedBox(width: 16, height: 16, child: ProgressRing())
+                  ? const SizedBox(
+                      width: 16, height: 16, child: ProgressRing())
                   : const Text('测试连接'),
             ),
             const SizedBox(width: 16),

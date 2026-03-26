@@ -59,7 +59,7 @@ class MonitorPage extends StatelessWidget {
             ? AppStyles.darkCard.withValues(alpha: 0.85)
             : AppStyles.lightCard.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: isDark ? Colors.grey[80]! : Colors.grey[40]!),
+        border: Border.all(color: AppStyles.borderColor(isDark)),
       ),
       child: const Text('暂无同步记录'),
     );
@@ -128,7 +128,7 @@ class MonitorPage extends StatelessWidget {
             ? AppStyles.darkCard.withValues(alpha: 0.85)
             : AppStyles.lightCard.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: isDark ? Colors.grey[80]! : Colors.grey[40]!),
+        border: Border.all(color: AppStyles.borderColor(isDark)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import '../../../core/theme/app_theme.dart';
 
 class SettingRow extends StatelessWidget {
   final String label;
@@ -70,7 +71,7 @@ class SettingDivider extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
       height: 1,
-      color: isDark ? Colors.grey[80] : Colors.grey[40],
+      color: AppStyles.dividerColor(isDark),
     );
   }
 }

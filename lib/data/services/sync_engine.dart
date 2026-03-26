@@ -61,12 +61,14 @@ class SyncEngine {
 
       // 2. 连接远端并扫描
       List<FileSnapshot> remoteSnapshots = [];
-      _reportProgress(0.1, '连接远端服务器...');
+      if (task.syncDirection != SyncDirection.localOnly) {
+        _reportProgress(0.1, '连接远端服务器...');
 
-      if (task.remoteProtocol == RemoteProtocol.webdav) {
-        final connected = await _webdav.connect(task);
-        if (!connected) throw Exception('无法连接到WebDAV服务器');
-        remoteSnapshots = await _webdav.scanRemoteFolder(task);
+        if (task.remoteProtocol == RemoteProtocol.webdav) {
+          final connected = await _webdav.connect(task);
+          if (!connected) throw Exception('无法连接到WebDAV服务器');
+          remoteSnapshots = await _webdav.scanRemoteFolder(task);
+        }
       }
 
       if (_isCancelled) return _finishLog(task, 'cancelled');
@@ -110,7 +112,6 @@ class SyncEngine {
             await Future.delayed(Duration(seconds: task.retryDelaySeconds));
             try {
               await _executeChange(task, change);
-              _currentLog!.successCount--;
               _currentLog!.failCount--;
               _currentLog!.successCount++;
               retrySuccess = true;
@@ -128,13 +129,15 @@ class SyncEngine {
         _reportProgress(progress, '同步中: $processed/${changes.length}');
       }
 
-      // 5. 保存快照
-      _reportProgress(0.95, '保存文件快照...');
-      await _scanner.saveSnapshots(task.id, localSnapshots);
+      // 5. 保存快照（仅在未取消时）
+      if (!_isCancelled) {
+        _reportProgress(0.95, '保存文件快照...');
+        await _scanner.saveSnapshots(task.id, localSnapshots);
 
-      // 6. 清理旧版本
-      _reportProgress(0.98, '清理旧版本...');
-      await _versionService.autoCleanup(task.id);
+        // 6. 清理旧版本
+        _reportProgress(0.98, '清理旧版本...');
+        await _versionService.autoCleanup(task.id);
+      }
 
       // 完成
       _reportProgress(1.0, '同步完成');
@@ -172,12 +175,30 @@ class SyncEngine {
   /// 上传文件
   Future<void> _uploadFile(SyncTask task, FileChange change) async {
     // 创建版本备份
-    if (change.changeType == ChangeType.modified) {
+    // 仅本地模式：为所有变更（新增和修改）创建版本备份
+    // 普通模式：仅为覆盖修改创建版本备份
+    if (task.syncDirection == SyncDirection.localOnly) {
+      final version = await _versionService.createVersion(
+          task,
+          change.localPath,
+          change.relativePath,
+          change.changeType == ChangeType.added ? 'add' : 'modify');
+      // 在 localOnly 模式下，版本创建失败（返回 null）应视为主要操作失败
+      if (version == null) {
+        _currentLog!.entries.add(LogEntry(
+          filePath: change.relativePath,
+          operation: 'version_backup',
+          status: 'failed',
+        ));
+        return;
+      }
+    } else if (change.changeType == ChangeType.modified) {
       await _versionService.createVersion(
           task, change.localPath, change.relativePath, 'modify');
     }
 
-    if (task.remoteProtocol == RemoteProtocol.webdav) {
+    if (task.syncDirection != SyncDirection.localOnly &&
+        task.remoteProtocol == RemoteProtocol.webdav) {
       final remotePath =
           '${task.remotePath}/${change.relativePath}'.replaceAll('//', '/');
       await _webdav.uploadFile(task, change.localPath, remotePath);
@@ -185,7 +206,9 @@ class SyncEngine {
 
     _currentLog!.entries.add(LogEntry(
       filePath: change.relativePath,
-      operation: 'upload',
+      operation: task.syncDirection == SyncDirection.localOnly
+          ? 'version_backup'
+          : 'upload',
       status: 'success',
     ));
   }
@@ -222,7 +245,8 @@ class SyncEngine {
           task, change.localPath, change.relativePath, 'delete');
     }
 
-    if (task.remoteProtocol == RemoteProtocol.webdav) {
+    if (task.syncDirection != SyncDirection.localOnly &&
+        task.remoteProtocol == RemoteProtocol.webdav) {
       final remotePath =
           '${task.remotePath}/${change.relativePath}'.replaceAll('//', '/');
       await _webdav.deleteRemoteFile(remotePath);

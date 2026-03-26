@@ -65,14 +65,30 @@ class _AppShellState extends State<AppShell> with WindowListener {
     }
   }
 
+  /// 设置标题栏样式（隐藏系统按钮），出错时静默忽略
+  void _applyTitleBarStyle() {
+    windowManager
+        .setTitleBarStyle(
+          TitleBarStyle.hidden,
+          windowButtonVisibility: false,
+        )
+        .catchError((_) {});
+  }
+
   @override
   void onWindowMaximize() {
-    if (mounted) setState(() => _isMaximized = true);
+    if (mounted) {
+      setState(() => _isMaximized = true);
+      _applyTitleBarStyle();
+    }
   }
 
   @override
   void onWindowUnmaximize() {
-    if (mounted) setState(() => _isMaximized = false);
+    if (mounted) {
+      setState(() => _isMaximized = false);
+      _applyTitleBarStyle();
+    }
   }
 
   @override

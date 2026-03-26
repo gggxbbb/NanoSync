@@ -107,7 +107,8 @@ class TaskProvider extends ChangeNotifier {
   /// 批量启用/禁用任务
   Future<void> batchSetEnabled(List<String> taskIds, bool enabled) async {
     for (final id in taskIds) {
-      final task = _tasks.firstWhere((t) => t.id == id);
+      final task = getTask(id);
+      if (task == null) continue;
       task.isEnabled = enabled;
       await updateTask(task);
     }
@@ -163,7 +164,8 @@ class TaskProvider extends ChangeNotifier {
   /// 批量执行同步
   Future<void> batchRunSync(List<String> taskIds) async {
     for (final id in taskIds) {
-      if (!_tasks.firstWhere((t) => t.id == id).isRunning) {
+      final task = getTask(id);
+      if (task != null && !task.isRunning) {
         await runSync(id);
       }
     }
