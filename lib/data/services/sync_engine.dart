@@ -61,12 +61,14 @@ class SyncEngine {
 
       // 2. 连接远端并扫描
       List<FileSnapshot> remoteSnapshots = [];
-      _reportProgress(0.1, '连接远端服务器...');
+      if (task.syncDirection != SyncDirection.localOnly) {
+        _reportProgress(0.1, '连接远端服务器...');
 
-      if (task.remoteProtocol == RemoteProtocol.webdav) {
-        final connected = await _webdav.connect(task);
-        if (!connected) throw Exception('无法连接到WebDAV服务器');
-        remoteSnapshots = await _webdav.scanRemoteFolder(task);
+        if (task.remoteProtocol == RemoteProtocol.webdav) {
+          final connected = await _webdav.connect(task);
+          if (!connected) throw Exception('无法连接到WebDAV服务器');
+          remoteSnapshots = await _webdav.scanRemoteFolder(task);
+        }
       }
 
       if (_isCancelled) return _finishLog(task, 'cancelled');
@@ -173,12 +175,21 @@ class SyncEngine {
   /// 上传文件
   Future<void> _uploadFile(SyncTask task, FileChange change) async {
     // 创建版本备份
-    if (change.changeType == ChangeType.modified) {
+    // 仅本地模式：为所有变更（新增和修改）创建版本备份
+    // 普通模式：仅为覆盖修改创建版本备份
+    if (task.syncDirection == SyncDirection.localOnly) {
+      await _versionService.createVersion(
+          task,
+          change.localPath,
+          change.relativePath,
+          change.changeType == ChangeType.added ? 'add' : 'modify');
+    } else if (change.changeType == ChangeType.modified) {
       await _versionService.createVersion(
           task, change.localPath, change.relativePath, 'modify');
     }
 
-    if (task.remoteProtocol == RemoteProtocol.webdav) {
+    if (task.syncDirection != SyncDirection.localOnly &&
+        task.remoteProtocol == RemoteProtocol.webdav) {
       final remotePath =
           '${task.remotePath}/${change.relativePath}'.replaceAll('//', '/');
       await _webdav.uploadFile(task, change.localPath, remotePath);
@@ -186,7 +197,9 @@ class SyncEngine {
 
     _currentLog!.entries.add(LogEntry(
       filePath: change.relativePath,
-      operation: 'upload',
+      operation: task.syncDirection == SyncDirection.localOnly
+          ? 'version_backup'
+          : 'upload',
       status: 'success',
     ));
   }
@@ -223,7 +236,8 @@ class SyncEngine {
           task, change.localPath, change.relativePath, 'delete');
     }
 
-    if (task.remoteProtocol == RemoteProtocol.webdav) {
+    if (task.syncDirection != SyncDirection.localOnly &&
+        task.remoteProtocol == RemoteProtocol.webdav) {
       final remotePath =
           '${task.remotePath}/${change.relativePath}'.replaceAll('//', '/');
       await _webdav.deleteRemoteFile(remotePath);

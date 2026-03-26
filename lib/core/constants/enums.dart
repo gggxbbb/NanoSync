@@ -3,7 +3,8 @@ enum SyncDirection {
   localToRemote('local_to_remote', '本地→远端'),
   remoteToLocal('remote_to_local', '远端→本地'),
   bidirectional('bidirectional', '双向同步'),
-  mirror('mirror', '镜像同步');
+  mirror('mirror', '镜像同步'),
+  localOnly('local_only', '仅本地');
 
   const SyncDirection(this.value, this.label);
   final String value;
