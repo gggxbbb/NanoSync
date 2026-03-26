@@ -119,7 +119,7 @@ class _LogPageState extends State<LogPage> {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: isDark ? Colors.grey[80]! : Colors.grey[40]!),
+        border: Border.all(color: AppStyles.borderColor(isDark)),
       ),
       child: Expander(
         leading: Container(

@@ -24,17 +24,16 @@ class AppStyles {
   static Color lightTextPrimary(Color? color) => color ?? Colors.black;
   static Color darkTextPrimary(Color? color) => color ?? Colors.white;
   static Color lightTextSecondary(bool isDark) =>
-      isDark ? Colors.grey[160]! : Colors.grey[140]!;
-  static Color lightTextTertiary(bool isDark) =>
-      isDark ? Colors.grey[140]! : Colors.grey[120]!;
+      isDark ? Colors.grey[100]! : Colors.grey[140]!;
+  static Color lightTextTertiary(bool isDark) => Colors.grey[120]!;
 
   // ============ 边框颜色 ============
   static Color borderColor(bool isDark) =>
-      isDark ? Colors.grey[80]! : Colors.grey[40]!;
+      isDark ? const Color(0xFF404040) : const Color(0xFFE0E0E0);
   static Color dividerColor(bool isDark) =>
-      isDark ? Colors.grey[80]! : Colors.grey[40]!;
+      isDark ? const Color(0xFF404040) : const Color(0xFFE5E5E5);
   static Color hoverBorderColor(bool isDark) =>
-      isDark ? Colors.grey[60]! : Colors.grey[60]!;
+      isDark ? const Color(0xFF555555) : const Color(0xFFBBBBBB);
 
   // ============ 背景样式 ============
   static Color cardBackground(bool isDark) => isDark

@@ -214,7 +214,12 @@ class WebDAVService {
       try {
         await _client!.mkdir(current);
       } catch (_) {
-        // 目录可能已存在，忽略错误
+        // mkdir may fail if directory already exists; verify existence
+        try {
+          await _client!.readDir(current);
+        } catch (e) {
+          throw Exception('无法创建远端目录: $current - $e');
+        }
       }
     }
   }

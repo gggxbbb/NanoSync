@@ -2,33 +2,10 @@
 
 ## 未完成的修改
 
-### 1. 深色模式监控卡片文字颜色问题
-- **问题描述**: 深色模式下监控页面的四个状态卡片(InfoCard)的文字颜色和背景色太接近，几乎看不清
-- **位置**: `lib/features/realtime_monitor/monitor_page.dart` 中的 InfoCard
-- **解决方案**: 使用更浅的颜色，如 `Colors.grey[160]` 或直接使用白色
-
-### 2. 深色模式下卡片边框颜色问题
-- **问题描述**: 各种地方的卡片在深色模式下仍然显示为白色边框，过于显眼
-- **位置**: 
-  - `lib/shared/widgets/components/cards.dart` 中的所有卡片组件
-  - `lib/features/realtime_monitor/monitor_page.dart` 中的自定义卡片
-  - `lib/features/sync_log/log_page.dart` 中的日志卡片
-- **解决方案**: 使用 `AppStyles.borderColor(isDark)` 统一边框颜色，确保深色模式下使用深灰色边框
-
-### 3. 任务图标配置
+### 1. 任务图标配置
 - **问题描述**: 项目缺少合适的应用图标
 - **位置**: `windows/runner/resources/app_icon.ico`
 - **解决方案**: 设计并配置一个符合应用风格的图标
-
-### 4. 最大化时窗口控件重复显示
-- **问题描述**: 最大化时自定义绘制的窗口控件和Windows自带的窗口控件会同时显示
-- **位置**: `lib/shared/widgets/app_shell.dart`
-- **解决方案**: 确保正确隐藏Windows原生标题栏
-
-### 5. SMB目录不存在时写入文件不记录失败
-- **问题描述**: 往SMB远端不存在的目录写入文件不会被记录为失败
-- **位置**: `lib/data/services/sync_engine.dart` 或 SMB相关服务
-- **解决方案**: 添加目录存在性检查和错误处理
 
 ## 其他建议改进
 

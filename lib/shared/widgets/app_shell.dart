@@ -67,12 +67,24 @@ class _AppShellState extends State<AppShell> with WindowListener {
 
   @override
   void onWindowMaximize() {
-    if (mounted) setState(() => _isMaximized = true);
+    if (mounted) {
+      setState(() => _isMaximized = true);
+      windowManager.setTitleBarStyle(
+        TitleBarStyle.hidden,
+        windowButtonVisibility: false,
+      );
+    }
   }
 
   @override
   void onWindowUnmaximize() {
-    if (mounted) setState(() => _isMaximized = false);
+    if (mounted) {
+      setState(() => _isMaximized = false);
+      windowManager.setTitleBarStyle(
+        TitleBarStyle.hidden,
+        windowButtonVisibility: false,
+      );
+    }
   }
 
   @override
