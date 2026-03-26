@@ -178,11 +178,20 @@ class SyncEngine {
     // 仅本地模式：为所有变更（新增和修改）创建版本备份
     // 普通模式：仅为覆盖修改创建版本备份
     if (task.syncDirection == SyncDirection.localOnly) {
-      await _versionService.createVersion(
+      final version = await _versionService.createVersion(
           task,
           change.localPath,
           change.relativePath,
           change.changeType == ChangeType.added ? 'add' : 'modify');
+      // 在 localOnly 模式下，版本创建失败（返回 null）应视为主要操作失败
+      if (version == null) {
+        _currentLog!.entries.add(LogEntry(
+          filePath: change.relativePath,
+          operation: 'version_backup',
+          status: 'failed',
+        ));
+        return;
+      }
     } else if (change.changeType == ChangeType.modified) {
       await _versionService.createVersion(
           task, change.localPath, change.relativePath, 'modify');

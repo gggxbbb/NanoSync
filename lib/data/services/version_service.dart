@@ -176,9 +176,14 @@ class VersionService {
       }
     }
 
-    // 清理超出时间限制的版本
+    // 清理超出时间限制的版本（同时删除物理文件）
     final cutoffDate = DateTime.now().subtract(Duration(days: maxD));
-    totalDeleted += await _db.deleteVersionsOlderThan(taskId, cutoffDate);
+    final allVersions = await getVersionsForTask(taskId);
+    for (final v in allVersions) {
+      if (v.createdAt.isBefore(cutoffDate)) {
+        if (await deleteVersion(v)) totalDeleted++;
+      }
+    }
 
     return totalDeleted;
   }
