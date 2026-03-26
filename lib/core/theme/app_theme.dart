@@ -25,7 +25,8 @@ class AppStyles {
   static Color darkTextPrimary(Color? color) => color ?? Colors.white;
   static Color lightTextSecondary(bool isDark) =>
       isDark ? Colors.grey[100]! : Colors.grey[140]!;
-  static Color lightTextTertiary(bool isDark) => Colors.grey[120]!;
+  static Color lightTextTertiary(bool isDark) =>
+      isDark ? Colors.grey[120]! : Colors.grey[140]!;
 
   // ============ 边框颜色 ============
   static Color borderColor(bool isDark) =>

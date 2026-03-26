@@ -289,6 +289,13 @@ class DatabaseHelper {
         orderBy: 'version_number DESC');
   }
 
+  Future<Map<String, dynamic>?> getVersionById(String id) async {
+    final db = await database;
+    final results =
+        await db.query('file_versions', where: 'id = ?', whereArgs: [id]);
+    return results.isNotEmpty ? results.first : null;
+  }
+
   Future<int> getLatestVersionNumber(String taskId, String originalPath) async {
     final db = await database;
     final result = await db.rawQuery(
@@ -349,8 +356,10 @@ class DatabaseHelper {
 
   Future<int> clearAllLogs() async {
     final db = await database;
-    await db.delete('log_entries');
-    return await db.delete('sync_logs');
+    return await db.transaction((txn) async {
+      await txn.delete('log_entries');
+      return await txn.delete('sync_logs');
+    });
   }
 
   Future<int> clearLogsByTask(String taskId) async {

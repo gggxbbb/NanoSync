@@ -44,11 +44,15 @@ class VersionService {
       final crc32 = await ChecksumUtil.calculateCrc32Chunked(originalFilePath);
       final fileSize = (await file.stat()).size;
 
-      // 确定版本存储目录（在远端.versions目录下）
-      final versionsDir = getVersionsDir(task.remotePath);
+      // 确定版本存储目录（在本地.nanosync_versions目录下）
+      final versionsDir = getVersionsDir(task.localPath);
       final fileDir = p.dirname(relativePath);
-      final versionDir = p.join(versionsDir, fileDir).replaceAll('\\', '/');
-      final versionPath = p.join(versionDir, versionName).replaceAll('\\', '/');
+      final versionDir = p.join(versionsDir, fileDir);
+      final versionPath = p.join(versionDir, versionName);
+
+      // 复制文件到版本目录
+      await Directory(versionDir).create(recursive: true);
+      await file.copy(versionPath);
 
       // 创建版本记录
       final version = FileVersion(
@@ -117,10 +121,29 @@ class VersionService {
   Future<int> batchDeleteVersions(List<String> versionIds) async {
     int deleted = 0;
     for (final id in versionIds) {
-      try {
-        await _db.deleteVersion(id);
-        deleted++;
-      } catch (_) {}
+      // Fetch the full version record so we can also remove the physical file
+      final maps = await _db.getVersionById(id);
+      if (maps != null) {
+        final version = FileVersion.fromMap(maps);
+        try {
+          // Delete the physical file first (best-effort)
+          final file = File(version.versionPath);
+          if (await file.exists()) {
+            await file.delete();
+          }
+        } catch (_) {}
+        // Always remove the DB record
+        try {
+          await _db.deleteVersion(id);
+          deleted++;
+        } catch (_) {}
+      } else {
+        // Record not found; still attempt DB delete to avoid orphaned rows
+        try {
+          await _db.deleteVersion(id);
+          deleted++;
+        } catch (_) {}
+      }
     }
     return deleted;
   }

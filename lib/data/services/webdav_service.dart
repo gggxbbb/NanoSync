@@ -243,8 +243,10 @@ class WebDAVService {
   Future<bool> remoteFileExists(String remotePath) async {
     if (_client == null) return false;
     try {
-      await _client!.readDir(p.dirname(remotePath));
-      return true;
+      final parentDir = p.dirname(remotePath);
+      final fileName = p.basename(remotePath);
+      final files = await _client!.readDir(parentDir);
+      return files.any((f) => f.name == fileName && !f.isDir);
     } catch (_) {
       return false;
     }

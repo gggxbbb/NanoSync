@@ -110,7 +110,6 @@ class SyncEngine {
             await Future.delayed(Duration(seconds: task.retryDelaySeconds));
             try {
               await _executeChange(task, change);
-              _currentLog!.successCount--;
               _currentLog!.failCount--;
               _currentLog!.successCount++;
               retrySuccess = true;
@@ -128,13 +127,15 @@ class SyncEngine {
         _reportProgress(progress, '同步中: $processed/${changes.length}');
       }
 
-      // 5. 保存快照
-      _reportProgress(0.95, '保存文件快照...');
-      await _scanner.saveSnapshots(task.id, localSnapshots);
+      // 5. 保存快照（仅在未取消时）
+      if (!_isCancelled) {
+        _reportProgress(0.95, '保存文件快照...');
+        await _scanner.saveSnapshots(task.id, localSnapshots);
 
-      // 6. 清理旧版本
-      _reportProgress(0.98, '清理旧版本...');
-      await _versionService.autoCleanup(task.id);
+        // 6. 清理旧版本
+        _reportProgress(0.98, '清理旧版本...');
+        await _versionService.autoCleanup(task.id);
+      }
 
       // 完成
       _reportProgress(1.0, '同步完成');

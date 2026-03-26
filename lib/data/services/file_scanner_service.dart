@@ -75,8 +75,9 @@ class FileScannerService {
       localMap[s.relativePath] = s;
     }
 
-    // 检测本地新增和修改
+    // 检测本地新增和修改（目录不参与上传操作）
     for (final local in currentLocal) {
+      if (local.isDirectory) continue;
       final history = historyMap[local.relativePath];
       if (history == null) {
         // 新增文件
@@ -235,6 +236,12 @@ class FileScannerService {
     for (final folder in AppConstants.defaultExcludeFolders) {
       if (parts.any((p) => p.toLowerCase() == folder.toLowerCase()))
         return true;
+    }
+
+    // 默认排除特定文件名
+    final fileName = parts.last;
+    for (final name in AppConstants.defaultExcludeFileNames) {
+      if (fileName.toLowerCase() == name.toLowerCase()) return true;
     }
 
     return false;
