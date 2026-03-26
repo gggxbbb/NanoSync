@@ -114,9 +114,16 @@ class TaskProvider extends ChangeNotifier {
   }
 
   /// 执行同步
-  Future<SyncLog?> runSync(String taskId) async {
-    final task = _tasks.firstWhere((t) => t.id == taskId);
-    if (task.isRunning) return null;
+  Future<SyncLog?> runSync(String taskId, {bool force = false}) async {
+    final taskIndex = _tasks.indexWhere((t) => t.id == taskId);
+    if (taskIndex == -1) return null;
+
+    final task = _tasks[taskIndex];
+    if (!force && task.isRunning) return null;
+
+    task.isRunning = true;
+    task.syncProgress = 0.0;
+    notifyListeners();
 
     _currentEngine = SyncEngine(
       onProgress: (progress, message) {
@@ -124,10 +131,20 @@ class TaskProvider extends ChangeNotifier {
         notifyListeners();
       },
       onComplete: (log) {
+        task.isRunning = false;
+        task.syncProgress = 1.0;
+        task.lastSyncTime = DateTime.now();
+        if (log != null) {
+          task.status = log.status == 'success'
+              ? TaskStatus.success
+              : TaskStatus.failed;
+        }
         notifyListeners();
       },
       onError: (error) {
+        task.isRunning = false;
         task.lastError = error;
+        task.status = TaskStatus.failed;
         notifyListeners();
       },
     );
@@ -136,6 +153,11 @@ class TaskProvider extends ChangeNotifier {
     _currentEngine = null;
     notifyListeners();
     return log;
+  }
+
+  /// 强制重新同步（忽略当前状态）
+  Future<SyncLog?> forceResync(String taskId) async {
+    return runSync(taskId, force: true);
   }
 
   /// 批量执行同步

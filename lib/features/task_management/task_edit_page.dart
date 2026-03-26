@@ -1,21 +1,29 @@
+import '../../core/theme/app_theme.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import '../../data/models/sync_task.dart';
 import '../../core/constants/enums.dart';
+import '../../core/theme/app_theme.dart';
 import '../../shared/providers/task_provider.dart';
+import '../../data/services/webdav_service.dart';
 
-/// 任务编辑页面
-class TaskEditPage extends StatefulWidget {
-  final SyncTask? task;
-
-  const TaskEditPage({super.key, this.task});
-
-  @override
-  State<TaskEditPage> createState() => _TaskEditPageState();
+Future<void> showTaskEditDialog(BuildContext context, {SyncTask? task}) async {
+  await showDialog(
+    context: context,
+    builder: (context) => TaskEditDialog(task: task),
+  );
 }
 
-class _TaskEditPageState extends State<TaskEditPage> {
+class TaskEditDialog extends StatefulWidget {
+  final SyncTask? task;
+  const TaskEditDialog({super.key, this.task});
+
+  @override
+  State<TaskEditDialog> createState() => _TaskEditDialogState();
+}
+
+class _TaskEditDialogState extends State<TaskEditDialog> {
   final _formKey = GlobalKey<FormState>();
   int _currentStep = 0;
 
@@ -98,58 +106,75 @@ class _TaskEditPageState extends State<TaskEditPage> {
 
   @override
   Widget build(BuildContext context) {
-    return NavigationView(
-      titleBar: TitleBar(
-        title: Text(isEditing ? '编辑同步任务' : '新建同步任务'),
-        backButton: IconButton(
-          icon: const Icon(FluentIcons.back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        isBackButtonVisible: true,
-      ),
-      content: ScaffoldPage(
-        content: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [_buildStepper()],
-                  ),
-                ),
-              ),
-              _buildBottomBar(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+    final isDark = FluentTheme.of(context).brightness == Brightness.dark;
+    final steps = ['基本信息', '远端配置', '同步规则', '定时策略'];
 
-  Widget _buildStepper() {
-    return InfoLabel(
-      label: '',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return ContentDialog(
+      title: Row(
         children: [
-          _buildStepIndicator(),
-          const SizedBox(height: 24),
-          [
-            _buildBasicInfoStep(),
-            _buildRemoteConfigStep(),
-            _buildSyncRulesStep(),
-            _buildScheduleStep(),
-          ][_currentStep],
+          Text(
+            isEditing ? '编辑同步任务' : '新建同步任务',
+            style: AppStyles.textStyleSubtitle,
+          ),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(FluentIcons.chrome_close),
+            onPressed: () => Navigator.pop(context),
+          ),
         ],
       ),
+      constraints: const BoxConstraints(maxWidth: 640, maxHeight: 680),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            _buildStepIndicator(steps, isDark),
+            const SizedBox(height: 16),
+            Expanded(
+              child: SingleChildScrollView(
+                child: [
+                  _buildBasicInfoStep(),
+                  _buildRemoteConfigStep(),
+                  _buildSyncRulesStep(),
+                  _buildScheduleStep(),
+                ][_currentStep],
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            if (_currentStep > 0)
+              SizedBox(
+                width: 100,
+                child: Button(
+                  child: const Text('上一步'),
+                  onPressed: () => setState(() => _currentStep--),
+                ),
+              ),
+            if (_currentStep > 0) const SizedBox(width: 8),
+            SizedBox(
+              width: 100,
+              child: _currentStep < 3
+                  ? FilledButton(
+                      child: const Text('下一步'),
+                      onPressed: () => setState(() => _currentStep++),
+                    )
+                  : FilledButton(
+                      child: Text(isEditing ? '保存修改' : '创建任务'),
+                      onPressed: _saveTask,
+                    ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
-  Widget _buildStepIndicator() {
-    final steps = ['基本信息', '远端配置', '同步规则', '定时策略'];
+  Widget _buildStepIndicator(List<String> steps, bool isDark) {
     return Row(
       children: List.generate(steps.length, (i) {
         final isActive = i == _currentStep;
@@ -158,15 +183,15 @@ class _TaskEditPageState extends State<TaskEditPage> {
           child: GestureDetector(
             onTap: () => setState(() => _currentStep = i),
             child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(
                     color: isActive
-                        ? Colors.blue
+                        ? AppStyles.primaryColor
                         : isCompleted
-                        ? Colors.green
-                        : Colors.grey.withOpacity(0.3),
+                        ? AppStyles.successColor
+                        : Colors.grey[60]!,
                     width: isActive ? 3 : 1,
                   ),
                 ),
@@ -175,16 +200,30 @@ class _TaskEditPageState extends State<TaskEditPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (isCompleted)
-                    Icon(FluentIcons.check_mark, size: 16, color: Colors.green)
+                    Icon(
+                      FluentIcons.check_mark,
+                      size: 14,
+                      color: AppStyles.successColor,
+                    )
                   else
-                    CircleAvatar(
-                      radius: 12,
-                      backgroundColor: isActive ? Colors.blue : Colors.grey,
-                      child: Text(
-                        '${i + 1}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.white,
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? AppStyles.primaryColor
+                            : Colors.grey[60],
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${i + 1}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isActive
+                                ? Colors.white
+                                : (isDark ? Colors.white : Colors.black),
+                          ),
                         ),
                       ),
                     ),
@@ -193,8 +232,11 @@ class _TaskEditPageState extends State<TaskEditPage> {
                     steps[i],
                     style: TextStyle(
                       fontWeight: isActive
-                          ? FontWeight.bold
+                          ? FontWeight.w600
                           : FontWeight.normal,
+                      color: isActive
+                          ? AppStyles.primaryColor
+                          : (isDark ? Colors.white : Colors.black),
                     ),
                   ),
                 ],
@@ -243,12 +285,31 @@ class _TaskEditPageState extends State<TaskEditPage> {
         const SizedBox(height: 16),
         InfoLabel(
           label: '同步方向',
-          child: ComboBox<SyncDirection>(
-            value: _syncDirection,
-            items: SyncDirection.values.map((d) {
-              return ComboBoxItem(value: d, child: Text(d.label));
-            }).toList(),
-            onChanged: (v) => setState(() => _syncDirection = v!),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ComboBox<SyncDirection>(
+                value: _syncDirection,
+                items: SyncDirection.values
+                    .map((d) => ComboBoxItem(value: d, child: Text(d.label)))
+                    .toList(),
+                onChanged: (v) => setState(() => _syncDirection = v!),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: FluentTheme.of(context).brightness == Brightness.dark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.grey[20],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _getSyncDirectionDescription(_syncDirection),
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 16),
@@ -261,6 +322,19 @@ class _TaskEditPageState extends State<TaskEditPage> {
     );
   }
 
+  String _getSyncDirectionDescription(SyncDirection direction) {
+    switch (direction) {
+      case SyncDirection.localToRemote:
+        return '单向同步：仅将本地文件上传到远端，不删除远端多余文件。适合备份场景。';
+      case SyncDirection.remoteToLocal:
+        return '单向同步：仅将远端文件下载到本地，不删除本地多余文件。适合从服务器拉取更新。';
+      case SyncDirection.bidirectional:
+        return '双向同步：本地和远端双向同步，保持两边文件一致。新文件互相复制，删除操作也会同步。';
+      case SyncDirection.mirror:
+        return '镜像同步：让远端完全镜像本地，删除远端本地不存在的文件。谨慎使用，会删除远端文件。';
+    }
+  }
+
   Widget _buildRemoteConfigStep() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -269,16 +343,12 @@ class _TaskEditPageState extends State<TaskEditPage> {
           label: '远端协议',
           child: ComboBox<RemoteProtocol>(
             value: _remoteProtocol,
-            items: RemoteProtocol.values.map((p) {
-              return ComboBoxItem(value: p, child: Text(p.label));
-            }).toList(),
+            items: RemoteProtocol.values
+                .map((p) => ComboBoxItem(value: p, child: Text(p.label)))
+                .toList(),
             onChanged: (v) => setState(() {
               _remoteProtocol = v!;
-              if (v == RemoteProtocol.webdav) {
-                _remotePortCtrl.text = '443';
-              } else {
-                _remotePortCtrl.text = '445';
-              }
+              _remotePortCtrl.text = v == RemoteProtocol.webdav ? '443' : '445';
             }),
           ),
         ),
@@ -342,12 +412,15 @@ class _TaskEditPageState extends State<TaskEditPage> {
             ),
             const SizedBox(width: 16),
             if (_connectionTestResult != null)
-              Text(
-                _connectionTestResult!,
-                style: TextStyle(
-                  color: _connectionTestResult!.contains('成功')
-                      ? Colors.green
-                      : Colors.red,
+              Flexible(
+                child: Text(
+                  _connectionTestResult!,
+                  style: TextStyle(
+                    color: _connectionTestResult!.contains('成功')
+                        ? AppStyles.successColor
+                        : AppStyles.errorColor,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
           ],
@@ -364,9 +437,9 @@ class _TaskEditPageState extends State<TaskEditPage> {
           label: '冲突处理策略',
           child: ComboBox<ConflictStrategy>(
             value: _conflictStrategy,
-            items: ConflictStrategy.values.map((s) {
-              return ComboBoxItem(value: s, child: Text(s.label));
-            }).toList(),
+            items: ConflictStrategy.values
+                .map((s) => ComboBoxItem(value: s, child: Text(s.label)))
+                .toList(),
             onChanged: (v) => setState(() => _conflictStrategy = v!),
           ),
         ),
@@ -406,9 +479,9 @@ class _TaskEditPageState extends State<TaskEditPage> {
           label: '同步触发方式',
           child: ComboBox<SyncTrigger>(
             value: _syncTrigger,
-            items: SyncTrigger.values.map((t) {
-              return ComboBoxItem(value: t, child: Text(t.label));
-            }).toList(),
+            items: SyncTrigger.values
+                .map((t) => ComboBoxItem(value: t, child: Text(t.label)))
+                .toList(),
             onChanged: (v) => setState(() => _syncTrigger = v!),
           ),
         ),
@@ -421,9 +494,11 @@ class _TaskEditPageState extends State<TaskEditPage> {
                   label: '定时周期',
                   child: ComboBox<ScheduleType>(
                     value: _scheduleType,
-                    items: ScheduleType.values.map((t) {
-                      return ComboBoxItem(value: t, child: Text(t.label));
-                    }).toList(),
+                    items: ScheduleType.values
+                        .map(
+                          (t) => ComboBoxItem(value: t, child: Text(t.label)),
+                        )
+                        .toList(),
                     onChanged: (v) => setState(() => _scheduleType = v!),
                   ),
                 ),
@@ -452,50 +527,27 @@ class _TaskEditPageState extends State<TaskEditPage> {
         ],
         if (_syncTrigger == SyncTrigger.realtime) ...[
           const SizedBox(height: 16),
-          InfoLabel(
-            label: '实时同步将监听本地文件夹变更，文件变更后自动同步。',
-            child: const SizedBox.shrink(),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: FluentTheme.of(context).brightness == Brightness.dark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.grey[20],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              '实时同步将监听本地文件夹变更，文件变更后自动同步到远端。',
+              style: TextStyle(fontSize: 12),
+            ),
           ),
         ],
       ],
     );
   }
 
-  Widget _buildBottomBar() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          if (_currentStep > 0)
-            OutlinedButton(
-              child: const Text('上一步'),
-              onPressed: () => setState(() => _currentStep--),
-            ),
-          const SizedBox(width: 16),
-          if (_currentStep < 3)
-            FilledButton(
-              child: const Text('下一步'),
-              onPressed: () => setState(() => _currentStep++),
-            )
-          else
-            FilledButton(
-              child: Text(isEditing ? '保存修改' : '创建任务'),
-              onPressed: _saveTask,
-            ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _pickLocalFolder() async {
     final result = await FilePicker.platform.getDirectoryPath();
-    if (result != null) {
-      _localPathCtrl.text = result;
-    }
+    if (result != null) _localPathCtrl.text = result;
   }
 
   Future<void> _testConnection() async {
@@ -503,18 +555,35 @@ class _TaskEditPageState extends State<TaskEditPage> {
       setState(() => _connectionTestResult = '请先填写服务器地址');
       return;
     }
+    if (_remoteUserCtrl.text.isEmpty) {
+      setState(() => _connectionTestResult = '请先填写用户名');
+      return;
+    }
+
     setState(() {
       _testingConnection = true;
       _connectionTestResult = null;
     });
 
-    final tempTask = _buildTaskFromForm();
-    // 简单测试：尝试连接
-    await Future.delayed(const Duration(seconds: 2));
-    setState(() {
-      _testingConnection = false;
-      _connectionTestResult = '连接测试完成，请检查配置是否正确';
-    });
+    try {
+      final tempTask = _buildTaskFromForm();
+      final webdavService = WebDAVService();
+      final result = await webdavService.testConnection(tempTask);
+
+      setState(() {
+        _testingConnection = false;
+        if (result.success) {
+          _connectionTestResult = '连接测试成功';
+        } else {
+          _connectionTestResult = result.error ?? '连接测试失败';
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _testingConnection = false;
+        _connectionTestResult = '连接测试失败: $e';
+      });
+    }
   }
 
   SyncTask _buildTaskFromForm() {
@@ -559,10 +628,8 @@ class _TaskEditPageState extends State<TaskEditPage> {
 
   Future<void> _saveTask() async {
     if (!_formKey.currentState!.validate()) return;
-
     final task = _buildTaskFromForm();
     final provider = context.read<TaskProvider>();
-
     bool success;
     if (isEditing) {
       success = await provider.updateTask(task);
@@ -570,9 +637,6 @@ class _TaskEditPageState extends State<TaskEditPage> {
       final result = await provider.addTask(task);
       success = result != null;
     }
-
-    if (success && mounted) {
-      Navigator.pop(context);
-    }
+    if (success && mounted) Navigator.pop(context);
   }
 }

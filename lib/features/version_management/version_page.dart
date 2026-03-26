@@ -1,10 +1,13 @@
+import '../../core/theme/app_theme.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../../data/models/file_version.dart';
 import '../../data/services/version_service.dart';
 import '../../data/database/database_helper.dart';
 import '../../data/models/sync_task.dart';
+import '../../core/theme/app_theme.dart' show AppStyles, ThemeManager;
+import '../../shared/widgets/components/indicators.dart';
+import '../../shared/widgets/components/dialogs.dart';
 
-/// 版本管理页面
 class VersionPage extends StatefulWidget {
   const VersionPage({super.key});
 
@@ -30,9 +33,7 @@ class _VersionPageState extends State<VersionPage> {
 
   Future<void> _loadTasks() async {
     final maps = await _db.getAllTasks();
-    setState(() {
-      _tasks = maps.map((m) => SyncTask.fromMap(m)).toList();
-    });
+    setState(() => _tasks = maps.map((m) => SyncTask.fromMap(m)).toList());
   }
 
   Future<void> _loadFilePaths(String taskId) async {
@@ -57,6 +58,9 @@ class _VersionPageState extends State<VersionPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return ScaffoldPage(
       header: PageHeader(
         title: const Text('版本管理'),
@@ -83,9 +87,12 @@ class _VersionPageState extends State<VersionPage> {
                   child: ComboBox<String>(
                     value: _selectedTaskId,
                     placeholder: const Text('选择同步任务'),
-                    items: _tasks.map((t) {
-                      return ComboBoxItem(value: t.id, child: Text(t.name));
-                    }).toList(),
+                    isExpanded: true,
+                    items: _tasks
+                        .map(
+                          (t) => ComboBoxItem(value: t.id, child: Text(t.name)),
+                        )
+                        .toList(),
                     onChanged: (v) {
                       setState(() => _selectedTaskId = v);
                       if (v != null) _loadFilePaths(v);
@@ -101,21 +108,34 @@ class _VersionPageState extends State<VersionPage> {
                           itemBuilder: (context, index) {
                             final path = _filePaths[index];
                             final isSelected = path == _selectedFilePath;
-                            return GestureDetector(
-                              onTap: () {
+                            return HoverButton(
+                              onPressed: () {
                                 setState(() => _selectedFilePath = path);
-                                if (_selectedTaskId != null) {
+                                if (_selectedTaskId != null)
                                   _loadVersions(_selectedTaskId!, path);
-                                }
                               },
-                              child: Container(
+                              builder: (context, states) => Container(
                                 color: isSelected
-                                    ? Colors.blue.withOpacity(0.1)
-                                    : null,
+                                    ? AppStyles.primaryColor.withValues(
+                                        alpha: 0.1,
+                                      )
+                                    : (states.isHovered
+                                          ? (isDark
+                                                ? Colors.white.withValues(
+                                                    alpha: 0.05,
+                                                  )
+                                                : Colors.grey[20])
+                                          : null),
                                 padding: const EdgeInsets.all(12),
                                 child: Row(
                                   children: [
-                                    const Icon(FluentIcons.page),
+                                    Icon(
+                                      FluentIcons.page,
+                                      size: 16,
+                                      color: isDark
+                                          ? Colors.grey[100]
+                                          : Colors.grey[140],
+                                    ),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
@@ -126,7 +146,7 @@ class _VersionPageState extends State<VersionPage> {
                                             path.split('/').last,
                                             style: TextStyle(
                                               fontWeight: isSelected
-                                                  ? FontWeight.bold
+                                                  ? FontWeight.w600
                                                   : FontWeight.normal,
                                             ),
                                           ),
@@ -134,8 +154,12 @@ class _VersionPageState extends State<VersionPage> {
                                             path,
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
-                                            style:
-                                                const TextStyle(fontSize: 11),
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: isDark
+                                                  ? Colors.grey[100]
+                                                  : Colors.grey[140],
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -150,13 +174,20 @@ class _VersionPageState extends State<VersionPage> {
               ],
             ),
           ),
-          Container(width: 1, color: Colors.grey.withOpacity(0.3)),
+          Container(
+            width: 1,
+            color: isDark ? Colors.grey[80] : Colors.grey[40],
+          ),
           Expanded(
             child: _loading
                 ? const Center(child: ProgressRing())
                 : _selectedFilePath == null
-                    ? const Center(child: Text('请选择文件查看版本历史'))
-                    : _buildVersionList(),
+                ? const EmptyState(
+                    icon: FluentIcons.history,
+                    title: '选择文件',
+                    subtitle: '从左侧列表选择一个文件查看版本历史',
+                  )
+                : _buildVersionList(),
           ),
         ],
       ),
@@ -164,6 +195,7 @@ class _VersionPageState extends State<VersionPage> {
   }
 
   Widget _buildVersionList() {
+    final theme = FluentTheme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -176,8 +208,7 @@ class _VersionPageState extends State<VersionPage> {
               Expanded(
                 child: Text(
                   _selectedFilePath ?? '',
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold),
+                  style: theme.typography.subtitle,
                 ),
               ),
               Text('${_versions.length} 个版本'),
@@ -203,13 +234,19 @@ class _VersionPageState extends State<VersionPage> {
                               width: 40,
                               height: 40,
                               decoration: BoxDecoration(
-                                color: Colors.blue.withOpacity(0.1),
+                                color: AppStyles.primaryColor.withValues(
+                                  alpha: 0.1,
+                                ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Center(
-                                child: Text('v${version.versionNumber}',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold)),
+                                child: Text(
+                                  'v${version.versionNumber}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppStyles.primaryColor,
+                                  ),
+                                ),
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -217,14 +254,19 @@ class _VersionPageState extends State<VersionPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(version.versionName,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w600)),
+                                  Text(
+                                    version.versionName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                   const SizedBox(height: 4),
                                   Text(
                                     '${version.formattedSize} | ${_formatTime(version.createdAt)}',
                                     style: TextStyle(
-                                        fontSize: 12, color: Colors.grey),
+                                      fontSize: 12,
+                                      color: Colors.grey[120],
+                                    ),
                                   ),
                                 ],
                               ),
@@ -253,31 +295,21 @@ class _VersionPageState extends State<VersionPage> {
   }
 
   String _formatTime(DateTime time) {
-    return '${time.year}-${time.month.toString().padLeft(2, '0')}-${time.day.toString().padLeft(2, '0')} '
-        '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+    return '${time.year}-${time.month.toString().padLeft(2, '0')}-${time.day.toString().padLeft(2, '0')} ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 
-  void _deleteVersion(FileVersion version) {
-    showDialog(
-      context: context,
-      builder: (_) => ContentDialog(
-        title: const Text('确认删除'),
-        content: Text('确定要删除版本 "${version.versionName}" 吗？'),
-        actions: [
-          Button(
-              child: const Text('取消'), onPressed: () => Navigator.pop(context)),
-          FilledButton(
-            child: const Text('删除'),
-            onPressed: () {
-              _versionService.deleteVersion(version);
-              if (_selectedTaskId != null && _selectedFilePath != null) {
-                _loadVersions(_selectedTaskId!, _selectedFilePath!);
-              }
-              Navigator.pop(context);
-            },
-          ),
-        ],
-      ),
+  Future<void> _deleteVersion(FileVersion version) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: '确认删除',
+      content: '确定要删除版本 "${version.versionName}" 吗？',
+      isDestructive: true,
     );
+    if (confirmed) {
+      _versionService.deleteVersion(version);
+      if (_selectedTaskId != null && _selectedFilePath != null) {
+        _loadVersions(_selectedTaskId!, _selectedFilePath!);
+      }
+    }
   }
 }

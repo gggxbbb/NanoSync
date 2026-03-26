@@ -3,8 +3,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
+import '../../shared/widgets/components/cards.dart';
+import '../../shared/widgets/components/inputs.dart';
 
-/// 设置页面
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
@@ -24,7 +25,11 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = context.watch<AppTheme>();
+    final theme = context.watch<ThemeManager>();
+    final isDark =
+        theme.themeMode == ThemeMode.dark ||
+        (theme.themeMode == ThemeMode.system &&
+            MediaQuery.platformBrightnessOf(context) == Brightness.dark);
 
     return ScaffoldPage(
       header: const PageHeader(title: Text('系统设置')),
@@ -33,131 +38,276 @@ class _SettingsPageState extends State<SettingsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSection('外观设置', [
-              _buildThemeSelector(theme),
-              const SizedBox(height: 12),
-              ToggleSwitch(
-                checked: theme.useMica,
-                onChanged: (v) => theme.setUseMica(v),
-                content: const Text('启用云母/亚克力特效'),
-              ),
-            ]),
-            const SizedBox(height: 24),
-            _buildSection('系统设置', [
-              ToggleSwitch(
-                checked: _autoStart,
-                onChanged: (v) => setState(() => _autoStart = v),
-                content: const Text('开机自启'),
-              ),
-              const SizedBox(height: 12),
-              ToggleSwitch(
-                checked: _minimizeToTray,
-                onChanged: (v) => setState(() => _minimizeToTray = v),
-                content: const Text('最小化到系统托盘'),
-              ),
-            ]),
-            const SizedBox(height: 24),
-            _buildSection('版本管理', [
-              _buildIntSetting('保留最近版本数', _maxVersions,
-                  (v) => setState(() => _maxVersions = v)),
-              _buildIntSetting('保留天数', _maxVersionDays,
-                  (v) => setState(() => _maxVersionDays = v)),
-              _buildIntSetting('总容量限制(GB)', _maxVersionSizeGB,
-                  (v) => setState(() => _maxVersionSizeGB = v)),
-            ]),
-            const SizedBox(height: 24),
-            _buildSection('同步设置', [
-              _buildIntSetting(
-                  '重试次数', _retryCount, (v) => setState(() => _retryCount = v)),
-              _buildIntSetting('重试间隔(秒)', _retryDelay,
-                  (v) => setState(() => _retryDelay = v)),
-              _buildIntSetting('实时同步延迟(秒)', _realtimeDelay,
-                  (v) => setState(() => _realtimeDelay = v)),
-            ]),
-            const SizedBox(height: 24),
-            _buildSection('数据管理', [
-              Row(
+            SettingsCard(
+              title: '外观',
+              icon: FluentIcons.color,
+              child: Column(
                 children: [
-                  OutlinedButton(
-                    child: const Text('导出配置'),
-                    onPressed: () {},
+                  SettingRow(
+                    label: '主题模式',
+                    description: '选择应用的主题外观',
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _ThemeModeButton(
+                          mode: ThemeMode.system,
+                          currentMode: theme.themeMode,
+                          label: '跟随系统',
+                          onChanged: theme.setThemeMode,
+                        ),
+                        const SizedBox(width: 8),
+                        _ThemeModeButton(
+                          mode: ThemeMode.light,
+                          currentMode: theme.themeMode,
+                          label: '浅色',
+                          onChanged: theme.setThemeMode,
+                        ),
+                        const SizedBox(width: 8),
+                        _ThemeModeButton(
+                          mode: ThemeMode.dark,
+                          currentMode: theme.themeMode,
+                          label: '深色',
+                          onChanged: theme.setThemeMode,
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(width: 12),
-                  OutlinedButton(
-                    child: const Text('导入配置'),
-                    onPressed: () {},
+                  const SettingDivider(),
+                  SettingRow(
+                    label: '云母特效',
+                    description: '启用Windows 11风格的云母/亚克力背景效果',
+                    trailing: ToggleSwitch(
+                      checked: theme.useMica,
+                      onChanged: (v) => theme.setUseMica(v),
+                    ),
                   ),
                 ],
               ),
-            ]),
+            ),
+            const SizedBox(height: 16),
+            SettingsCard(
+              title: '系统',
+              icon: FluentIcons.settings,
+              child: Column(
+                children: [
+                  SettingRow(
+                    label: '开机自启',
+                    description: 'Windows启动时自动运行应用',
+                    trailing: ToggleSwitch(
+                      checked: _autoStart,
+                      onChanged: (v) => setState(() => _autoStart = v),
+                    ),
+                  ),
+                  const SettingDivider(),
+                  SettingRow(
+                    label: '最小化到托盘',
+                    description: '关闭窗口时最小化到系统托盘而非退出',
+                    trailing: ToggleSwitch(
+                      checked: _minimizeToTray,
+                      onChanged: (v) => setState(() => _minimizeToTray = v),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            SettingsCard(
+              title: '版本管理',
+              icon: FluentIcons.history,
+              child: Column(
+                children: [
+                  SettingRow(
+                    label: '保留版本数',
+                    description: '每个文件保留的最大版本数量',
+                    trailing: SizedBox(
+                      width: 100,
+                      child: NumberBox(
+                        value: _maxVersions,
+                        onChanged: (v) =>
+                            setState(() => _maxVersions = v ?? _maxVersions),
+                        min: 1,
+                        max: 100,
+                      ),
+                    ),
+                  ),
+                  const SettingDivider(),
+                  SettingRow(
+                    label: '保留天数',
+                    description: '版本文件的保留天数',
+                    trailing: SizedBox(
+                      width: 100,
+                      child: NumberBox(
+                        value: _maxVersionDays,
+                        onChanged: (v) => setState(
+                          () => _maxVersionDays = v ?? _maxVersionDays,
+                        ),
+                        min: 1,
+                        max: 365,
+                      ),
+                    ),
+                  ),
+                  const SettingDivider(),
+                  SettingRow(
+                    label: '容量限制',
+                    description: '版本存储的最大容量（GB）',
+                    trailing: SizedBox(
+                      width: 100,
+                      child: NumberBox(
+                        value: _maxVersionSizeGB,
+                        onChanged: (v) => setState(
+                          () => _maxVersionSizeGB = v ?? _maxVersionSizeGB,
+                        ),
+                        min: 1,
+                        max: 1000,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            SettingsCard(
+              title: '同步设置',
+              icon: FluentIcons.sync,
+              child: Column(
+                children: [
+                  SettingRow(
+                    label: '重试次数',
+                    description: '同步失败时的重试次数',
+                    trailing: SizedBox(
+                      width: 100,
+                      child: NumberBox(
+                        value: _retryCount,
+                        onChanged: (v) =>
+                            setState(() => _retryCount = v ?? _retryCount),
+                        min: 0,
+                        max: 10,
+                      ),
+                    ),
+                  ),
+                  const SettingDivider(),
+                  SettingRow(
+                    label: '重试间隔',
+                    description: '重试之间的等待时间（秒）',
+                    trailing: SizedBox(
+                      width: 100,
+                      child: NumberBox(
+                        value: _retryDelay,
+                        onChanged: (v) =>
+                            setState(() => _retryDelay = v ?? _retryDelay),
+                        min: 1,
+                        max: 60,
+                      ),
+                    ),
+                  ),
+                  const SettingDivider(),
+                  SettingRow(
+                    label: '实时同步延迟',
+                    description: '实时同步的文件变更延迟（秒）',
+                    trailing: SizedBox(
+                      width: 100,
+                      child: NumberBox(
+                        value: _realtimeDelay,
+                        onChanged: (v) => setState(
+                          () => _realtimeDelay = v ?? _realtimeDelay,
+                        ),
+                        min: 1,
+                        max: 60,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            SettingsCard(
+              title: '数据管理',
+              icon: FluentIcons.database,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    OutlinedButton(child: const Text('导出配置'), onPressed: () {}),
+                    const SizedBox(width: 12),
+                    OutlinedButton(child: const Text('导入配置'), onPressed: () {}),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 24),
-            _buildAboutSection(),
+            _buildAboutSection(isDark),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSection(String title, List<Widget> children) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: children,
+  Widget _buildAboutSection(bool isDark) {
+    return SettingsCard(
+      title: '开源信息',
+      icon: FluentIcons.open_source,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildLinkRow(
+            isDark,
+            FluentIcons.open_source,
+            'GitHub 仓库',
+            'github.com/gggxbbb/NanoSync',
+            url: 'https://github.com/gggxbbb/NanoSync',
+          ),
+          const SizedBox(height: 8),
+          _buildLinkRow(
+            isDark,
+            FluentIcons.contact,
+            '作者主页',
+            '@gggxbbb',
+            url: 'https://github.com/gggxbbb',
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '开源依赖',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white : Colors.black,
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildThemeSelector(AppTheme theme) {
-    return Row(
-      children: [
-        const Text('主题模式:'),
-        const SizedBox(width: 16),
-        ...['system', 'light', 'dark'].map((mode) {
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ToggleButton(
-              checked: theme.themeMode.name == mode,
-              onChanged: (v) {
-                if (v) {
-                  theme.setThemeMode(ThemeMode.values.byName(mode));
-                }
-              },
-              child: Text(mode == 'system'
-                  ? '跟随系统'
-                  : mode == 'light'
-                      ? '浅色'
-                      : '深色'),
-            ),
-          );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildIntSetting(
-      String label, int value, void Function(int) onChanged) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          SizedBox(width: 180, child: Text(label)),
-          SizedBox(
-            width: 100,
-            child: NumberBox(
-              value: value,
-              onChanged: (v) => onChanged(v ?? value),
-              min: 0,
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: _dependencyLicenses
+                .map(
+                  (d) => Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.05)
+                          : Colors.grey[20],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '${d.name} (${d.license})',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+          const SizedBox(height: 16),
+          Center(
+            child: Text(
+              'NanoSync ${AppConstants.appVersion} · MIT License',
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? Colors.grey[120] : Colors.grey[140],
+              ),
             ),
           ),
         ],
@@ -165,98 +315,44 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildAboutSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('关于与开源信息',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildLinkRow(FluentIcons.open_source, 'GitHub 仓库',
-                    'github.com/gggxbbb/NanoSync',
-                    url: 'https://github.com/gggxbbb/NanoSync'),
-                _buildLinkRow(FluentIcons.contact, 'GitHub 主页', '@gggxbbb',
-                    url: 'https://github.com/gggxbbb'),
-                const SizedBox(height: 12),
-                const Divider(),
-                const SizedBox(height: 8),
-                const Text('开源依赖协议',
-                    style:
-                        TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                ..._dependencyLicenses.map((d) => _buildLicenseRow(d)),
-              ],
+  Widget _buildLinkRow(
+    bool isDark,
+    IconData icon,
+    String label,
+    String display, {
+    required String url,
+  }) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _launchUrl(url),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: AppStyles.primaryColor),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 80,
+              child: Text(
+                label,
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
+              ),
             ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Center(
-          child: Text(
-            'NanoSync ${AppConstants.appVersion}  ·  MIT License',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-        ),
-        const SizedBox(height: 24),
-      ],
-    );
-  }
-
-  Widget _buildLinkRow(IconData icon, String label, String display,
-      {required String url}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: () => _launchUrl(url),
-          child: Row(
-            children: [
-              Icon(icon, size: 18),
-              const SizedBox(width: 12),
-              SizedBox(width: 100, child: Text(label)),
-              Expanded(
-                child: Text(
-                  display,
-                  style: TextStyle(
-                    color: Colors.blue,
-                    decoration: TextDecoration.underline,
-                  ),
+            Expanded(
+              child: Text(
+                display,
+                style: TextStyle(
+                  color: AppStyles.primaryColor,
+                  decoration: TextDecoration.underline,
                 ),
               ),
-              const Icon(FluentIcons.navigate_external_inline, size: 14),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLicenseRow(_DependencyInfo dep) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 200,
-            child: Text(dep.name, style: const TextStyle(fontSize: 13)),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(4),
             ),
-            child: Text(dep.license,
-                style:
-                    const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-          ),
-        ],
+            Icon(
+              FluentIcons.navigate_external_inline,
+              size: 14,
+              color: AppStyles.primaryColor,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -268,27 +364,42 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  static const List<_DependencyInfo> _dependencyLicenses = [
+  static const _dependencyLicenses = [
     _DependencyInfo('fluent_ui', 'BSD-3'),
     _DependencyInfo('provider', 'MIT'),
-    _DependencyInfo('sqflite_common_ffi', 'BSD-3'),
+    _DependencyInfo('sqflite', 'BSD-3'),
     _DependencyInfo('webdav_client_plus', 'BSD-3'),
     _DependencyInfo('file_picker', 'MIT'),
-    _DependencyInfo('path_provider', 'BSD-3'),
-    _DependencyInfo('watcher', 'BSD-3'),
-    _DependencyInfo('shared_preferences', 'BSD-3'),
-    _DependencyInfo('crypto', 'BSD-3'),
-    _DependencyInfo('archive', 'MIT'),
-    _DependencyInfo('intl', 'BSD-3'),
+    _DependencyInfo('window_manager', 'MIT'),
+    _DependencyInfo('flutter_acrylic', 'MIT'),
     _DependencyInfo('system_tray', 'MIT'),
-    _DependencyInfo('win32', 'BSD-3'),
-    _DependencyInfo('uuid', 'MIT'),
-    _DependencyInfo('rxdart', 'Apache-2.0'),
-    _DependencyInfo('dio', 'MIT'),
-    _DependencyInfo('url_launcher', 'BSD-3'),
-    _DependencyInfo('system_theme', 'MIT'),
-    _DependencyInfo('fluentui_system_icons', 'MIT'),
   ];
+}
+
+class _ThemeModeButton extends StatelessWidget {
+  final ThemeMode mode;
+  final ThemeMode currentMode;
+  final String label;
+  final ValueChanged<ThemeMode> onChanged;
+
+  const _ThemeModeButton({
+    required this.mode,
+    required this.currentMode,
+    required this.label,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = mode == currentMode;
+    return ToggleButton(
+      checked: isSelected,
+      onChanged: (v) {
+        if (v) onChanged(mode);
+      },
+      child: Text(label),
+    );
+  }
 }
 
 class _DependencyInfo {

@@ -3,9 +3,12 @@ import 'package:provider/provider.dart';
 import '../../shared/providers/task_provider.dart';
 import '../../data/models/sync_task.dart';
 import '../../core/constants/enums.dart';
-import 'task_edit_page.dart';
+import '../../core/theme/app_theme.dart';
+import '../../shared/widgets/components/cards.dart';
+import '../../shared/widgets/components/indicators.dart';
+import '../../shared/widgets/components/dialogs.dart';
+import 'task_edit_page.dart' show showTaskEditDialog;
 
-/// 任务列表页面
 class TaskListPage extends StatefulWidget {
   const TaskListPage({super.key});
 
@@ -16,6 +19,7 @@ class TaskListPage extends StatefulWidget {
 class _TaskListPageState extends State<TaskListPage> {
   final Set<String> _selectedIds = {};
   bool _selectionMode = false;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -37,8 +41,8 @@ class _TaskListPageState extends State<TaskListPage> {
           content: provider.isLoading
               ? const Center(child: ProgressRing())
               : provider.tasks.isEmpty
-                  ? _buildEmptyState()
-                  : _buildTaskList(provider),
+              ? _buildEmptyState()
+              : _buildTaskList(provider),
         );
       },
     );
@@ -49,26 +53,33 @@ class _TaskListPageState extends State<TaskListPage> {
       primaryItems: [
         CommandBarButton(
           icon: const Icon(FluentIcons.add),
-          label: const Text('新建任务'),
+          label: const Text('新建'),
           onPressed: () => _navigateToEdit(null),
         ),
+        CommandBarButton(
+          icon: const Icon(FluentIcons.search),
+          label: const Text('搜索'),
+          onPressed: () => _showSearch(),
+        ),
         if (_selectionMode) ...[
+          const CommandBarSeparator(),
           CommandBarButton(
             icon: const Icon(FluentIcons.play),
-            label: const Text('批量执行'),
+            label: const Text('执行'),
             onPressed: _selectedIds.isEmpty
                 ? null
                 : () => provider.batchRunSync(_selectedIds.toList()),
           ),
           CommandBarButton(
             icon: const Icon(FluentIcons.delete),
-            label: const Text('批量删除'),
-            onPressed:
-                _selectedIds.isEmpty ? null : () => _batchDelete(provider),
+            label: const Text('删除'),
+            onPressed: _selectedIds.isEmpty
+                ? null
+                : () => _batchDelete(provider),
           ),
           CommandBarButton(
             icon: const Icon(FluentIcons.cancel),
-            label: const Text('取消选择'),
+            label: const Text('取消'),
             onPressed: () => setState(() {
               _selectionMode = false;
               _selectedIds.clear();
@@ -80,132 +91,155 @@ class _TaskListPageState extends State<TaskListPage> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(FluentIcons.sync_folder, size: 64, color: Colors.grey),
-          const SizedBox(height: 16),
-          const Text('暂无同步任务', style: TextStyle(fontSize: 18)),
-          const SizedBox(height: 8),
-          const Text('点击"新建任务"开始创建您的第一个同步任务'),
-          const SizedBox(height: 16),
-          FilledButton(
-            child: const Text('新建任务'),
-            onPressed: () => _navigateToEdit(null),
-          ),
-        ],
+    return EmptyState(
+      icon: FluentIcons.sync_folder,
+      title: '暂无同步任务',
+      subtitle: '点击"新建"按钮创建您的第一个同步任务',
+      action: FilledButton(
+        onPressed: () => _navigateToEdit(null),
+        child: const Text('新建任务'),
       ),
     );
   }
 
   Widget _buildTaskList(TaskProvider provider) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: provider.tasks.length,
-      itemBuilder: (context, index) {
-        final task = provider.tasks[index];
-        return _buildTaskCard(task, provider);
-      },
+    final filteredTasks = _searchQuery.isEmpty
+        ? provider.tasks
+        : provider.tasks
+              .where(
+                (t) =>
+                    t.name.toLowerCase().contains(_searchQuery.toLowerCase()),
+              )
+              .toList();
+
+    final runningTasks = filteredTasks.where((t) => t.isRunning).toList();
+    final idleTasks = filteredTasks
+        .where((t) => !t.isRunning && t.status == TaskStatus.idle)
+        .toList();
+    final completedTasks = filteredTasks
+        .where(
+          (t) =>
+              t.status == TaskStatus.success || t.status == TaskStatus.failed,
+        )
+        .toList();
+
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        if (runningTasks.isNotEmpty) ...[
+          const SectionHeader(title: '正在同步'),
+          ...runningTasks.map(
+            (t) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _buildTaskCard(t, provider),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (idleTasks.isNotEmpty) ...[
+          const SectionHeader(title: '等待中'),
+          ...idleTasks.map(
+            (t) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _buildTaskCard(t, provider),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (completedTasks.isNotEmpty) ...[
+          const SectionHeader(title: '已完成'),
+          ...completedTasks.map(
+            (t) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _buildTaskCard(t, provider),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
   Widget _buildTaskCard(SyncTask task, TaskProvider provider) {
     final isSelected = _selectedIds.contains(task.id);
+    final theme = FluentTheme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: EdgeInsets.zero,
-      child: GestureDetector(
-        onTap: () {
-          if (_selectionMode) {
-            setState(() {
-              if (isSelected) {
-                _selectedIds.remove(task.id);
-              } else {
-                _selectedIds.add(task.id);
-              }
-            });
-          } else {
-            _navigateToEdit(task);
-          }
-        },
-        onLongPress: () {
-          setState(() {
-            _selectionMode = true;
-            _selectedIds.add(task.id);
-          });
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              if (_selectionMode)
-                Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: Checkbox(
-                    checked: isSelected,
-                    onChanged: (v) => setState(() {
-                      if (v == true) {
-                        _selectedIds.add(task.id);
-                      } else {
-                        _selectedIds.remove(task.id);
-                      }
-                    }),
-                  ),
-                ),
-              _buildStatusIcon(task),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      task.name,
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${task.localPath} → ${task.remoteProtocol.label}://${task.remoteHost}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[100]),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        _buildInfoChip(task.syncDirection.label),
-                        const SizedBox(width: 8),
-                        _buildInfoChip(task.syncTrigger.label),
-                        const SizedBox(width: 8),
-                        _buildStatusChip(task.status),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              if (!_selectionMode) ...[
+    return TaskCard(
+      name: task.name,
+      description:
+          '${task.localPath} → ${task.remoteProtocol.label}://${task.remoteHost}',
+      isSelected: isSelected,
+      isRunning: task.isRunning,
+      progress: task.syncProgress,
+      leading: _buildStatusIcon(task),
+      badges: [
+        StatusBadge(
+          label: task.syncDirection.label,
+          color: AppStyles.infoColor,
+        ),
+        StatusBadge(
+          label: task.syncTrigger.label,
+          color: AppStyles.primaryColor,
+        ),
+        _buildStatusBadge(task.status),
+      ],
+      trailing: _selectionMode
+          ? Checkbox(
+              checked: isSelected,
+              onChanged: (v) => setState(() {
+                if (v == true) {
+                  _selectedIds.add(task.id);
+                } else {
+                  _selectedIds.remove(task.id);
+                }
+              }),
+            )
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 if (task.isRunning)
                   IconButton(
-                    icon: const Icon(FluentIcons.pause),
+                    icon: Icon(
+                      FluentIcons.pause,
+                      color: AppStyles.warningColor,
+                    ),
                     onPressed: () => provider.pauseCurrentSync(),
                   )
                 else
                   IconButton(
-                    icon: const Icon(FluentIcons.play),
-                    onPressed:
-                        task.isEnabled ? () => provider.runSync(task.id) : null,
+                    icon: Icon(FluentIcons.play, color: AppStyles.successColor),
+                    onPressed: task.isEnabled
+                        ? () => provider.runSync(task.id)
+                        : null,
                   ),
                 IconButton(
-                  icon: const Icon(FluentIcons.delete),
+                  icon: Icon(
+                    FluentIcons.delete,
+                    color: isDark ? Colors.grey[100] : Colors.grey[140],
+                  ),
                   onPressed: () => _confirmDelete(task, provider),
                 ),
               ],
-            ],
-          ),
-        ),
-      ),
+            ),
+      onTap: () {
+        if (_selectionMode) {
+          setState(() {
+            if (isSelected) {
+              _selectedIds.remove(task.id);
+            } else {
+              _selectedIds.add(task.id);
+            }
+          });
+        } else {
+          _navigateToEdit(task);
+        }
+      },
+      onLongPress: () {
+        setState(() {
+          _selectionMode = true;
+          _selectedIds.add(task.id);
+        });
+      },
     );
   }
 
@@ -215,125 +249,117 @@ class _TaskListPageState extends State<TaskListPage> {
     switch (task.status) {
       case TaskStatus.syncing:
         icon = FluentIcons.sync;
-        color = Colors.blue;
+        color = AppStyles.primaryColor;
         break;
       case TaskStatus.success:
         icon = FluentIcons.check_mark;
-        color = Colors.green;
+        color = AppStyles.successColor;
         break;
       case TaskStatus.failed:
-        icon = FluentIcons.error;
-        color = Colors.red;
+        icon = FluentIcons.error_badge;
+        color = AppStyles.errorColor;
         break;
       case TaskStatus.paused:
         icon = FluentIcons.pause;
-        color = Colors.orange;
+        color = AppStyles.warningColor;
         break;
       default:
         icon = FluentIcons.clock;
-        color = Colors.grey;
+        color = AppStyles.infoColor;
     }
     return Container(
-      width: 48,
-      height: 48,
+      width: 44,
+      height: 44,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Icon(icon, color: color, size: 24),
+      child: Icon(icon, color: color, size: 22),
     );
   }
 
-  Widget _buildInfoChip(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(label, style: const TextStyle(fontSize: 11)),
-    );
-  }
-
-  Widget _buildStatusChip(TaskStatus status) {
+  Widget _buildStatusBadge(TaskStatus status) {
     Color color;
     switch (status) {
       case TaskStatus.syncing:
-        color = Colors.blue;
+        color = AppStyles.primaryColor;
         break;
       case TaskStatus.success:
-        color = Colors.green;
+        color = AppStyles.successColor;
         break;
       case TaskStatus.failed:
-        color = Colors.red;
+        color = AppStyles.errorColor;
+        break;
+      case TaskStatus.paused:
+        color = AppStyles.warningColor;
         break;
       default:
-        color = Colors.grey;
+        color = AppStyles.infoColor;
     }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
+    return StatusBadge(label: status.label, color: color);
+  }
+
+  void _showSearch() {
+    final controller = TextEditingController(text: _searchQuery);
+    showDialog(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: const Text('搜索任务'),
+        content: TextBox(
+          controller: controller,
+          placeholder: '输入任务名称...',
+          autofocus: true,
+          onChanged: (v) => _searchQuery = v,
+        ),
+        actions: [
+          Button(
+            child: const Text('取消'),
+            onPressed: () => Navigator.pop(context),
+          ),
+          FilledButton(
+            child: const Text('搜索'),
+            onPressed: () {
+              setState(() => _searchQuery = controller.text);
+              Navigator.pop(context);
+            },
+          ),
+        ],
       ),
-      child: Text(status.label, style: TextStyle(fontSize: 11, color: color)),
     );
   }
 
   void _navigateToEdit(SyncTask? task) {
-    Navigator.of(context)
-        .push(
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) =>
-                TaskEditPage(task: task),
-          ),
-        )
-        .then((_) => context.read<TaskProvider>().loadTasks());
+    showTaskEditDialog(
+      context,
+      task: task,
+    ).then((_) => context.read<TaskProvider>().loadTasks());
   }
 
-  void _confirmDelete(SyncTask task, TaskProvider provider) {
-    showDialog(
-      context: context,
-      builder: (_) => ContentDialog(
-        title: const Text('确认删除'),
-        content: Text('确定要删除任务"${task.name}"吗？'),
-        actions: [
-          Button(
-              child: const Text('取消'), onPressed: () => Navigator.pop(context)),
-          FilledButton(
-            child: const Text('删除'),
-            onPressed: () {
-              provider.deleteTask(task.id);
-              Navigator.pop(context);
-            },
-          ),
-        ],
-      ),
+  Future<void> _confirmDelete(SyncTask task, TaskProvider provider) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: '确认删除',
+      content: '确定要删除任务"${task.name}"吗？',
+      isDestructive: true,
     );
+    if (confirmed) {
+      provider.deleteTask(task.id);
+    }
   }
 
-  void _batchDelete(TaskProvider provider) {
-    showDialog(
-      context: context,
-      builder: (_) => ContentDialog(
-        title: const Text('确认批量删除'),
-        content: Text('确定要删除选中的${_selectedIds.length}个任务吗？'),
-        actions: [
-          Button(
-              child: const Text('取消'), onPressed: () => Navigator.pop(context)),
-          FilledButton(
-            child: const Text('删除'),
-            onPressed: () {
-              provider.batchDeleteTasks(_selectedIds.toList());
-              setState(() {
-                _selectedIds.clear();
-                _selectionMode = false;
-              });
-              Navigator.pop(context);
-            },
-          ),
-        ],
-      ),
+  Future<void> _batchDelete(TaskProvider provider) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: '批量删除',
+      content: '确定要删除选中的${_selectedIds.length}个任务吗？',
+      isDestructive: true,
     );
+    if (confirmed) {
+      provider.batchDeleteTasks(_selectedIds.toList());
+      setState(() {
+        _selectedIds.clear();
+        _selectionMode = false;
+      });
+    }
   }
 }

@@ -10,20 +10,17 @@ import 'shared/widgets/app_shell.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 初始化窗口管理器
   await windowManager.ensureInitialized();
 
-  // 初始化窗口效果（Mica）
   await Window.initialize();
 
-  // 配置窗口
-  final windowOptions = WindowOptions(
-    size: const Size(1280, 800),
-    minimumSize: const Size(960, 640),
+  const windowOptions = WindowOptions(
+    size: Size(1280, 800),
+    minimumSize: Size(960, 640),
     center: true,
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
-    titleBarStyle: TitleBarStyle.hidden, // 隐藏系统标题栏
+    titleBarStyle: TitleBarStyle.hidden,
     title: 'NanoSync',
   );
 
@@ -32,13 +29,12 @@ void main() async {
     await windowManager.focus();
   });
 
-  // 初始化SQLite FFI
   sqfliteFfiInit();
 
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AppTheme()),
+        ChangeNotifierProvider(create: (_) => ThemeManager()),
         ChangeNotifierProvider(create: (_) => TaskProvider()),
       ],
       child: const NanoSyncApp(),
@@ -51,14 +47,26 @@ class NanoSyncApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = context.watch<AppTheme>();
+    final theme = context.watch<ThemeManager>();
 
     return FluentApp(
       title: 'NanoSync',
       debugShowCheckedModeBanner: false,
       themeMode: theme.themeMode,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
+      theme: AppStyles.lightTheme,
+      darkTheme: AppStyles.darkTheme,
+      builder: (context, child) {
+        return Directionality(
+          textDirection: TextDirection.ltr,
+          child: MediaQuery(
+            data: MediaQuery.of(context),
+            child: DefaultTextStyle(
+              style: AppStyles.textStyleBody,
+              child: child!,
+            ),
+          ),
+        );
+      },
       home: const AppShell(),
     );
   }

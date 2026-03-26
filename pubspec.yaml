@@ -9,12 +9,12 @@ dependencies:
     sdk: flutter
 
   # UI Framework
-  fluent_ui: ^4.15.0
-  system_theme: ^3.0.0
-  fluentui_system_icons: ^1.1.223
+  fluent_ui: ^4.9.1
+  system_theme: ^3.1.0
+  fluentui_system_icons: ^1.1.263
 
   # File System
-  file_picker: ^8.0.0+1
+  file_picker: ^10.1.10
   path_provider: ^2.1.5
   path: ^1.9.0
 
@@ -26,16 +26,16 @@ dependencies:
 
   # Database
   sqflite_common_ffi: ^2.3.3+1
-  sqflite: ^2.4.1
+  sqflite: ^2.4.2
 
   # Storage & Preferences
-  shared_preferences: ^2.3.2
+  shared_preferences: ^2.5.5
 
   # Crypto & Checksum
-  crypto: ^3.0.5
+  crypto: ^3.0.6
 
   # Archive
-  archive: ^3.6.1
+  archive: ^4.0.9
 
   # Date & Time
   intl: ^0.20.2
@@ -47,24 +47,24 @@ dependencies:
   system_tray: ^2.0.3
 
   # Window Management
-  window_manager: ^0.4.3
+  window_manager: ^0.5.1
   flutter_acrylic: ^1.1.4
 
   # Windows Integration
-  win32: ^5.5.4
-  ffi: ^2.1.3
+  win32: ^5.15.0
+  ffi: ^2.1.4
 
   # Utilities
   uuid: ^3.0.7
-  logging: ^1.2.0
+  logging: ^1.3.0
   rxdart: ^0.28.0
   dio: ^5.4.0
-  url_launcher: ^6.3.1
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true

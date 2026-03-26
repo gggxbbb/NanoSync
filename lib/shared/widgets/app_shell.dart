@@ -11,7 +11,6 @@ import '../../features/sync_log/log_page.dart';
 import '../../features/settings/settings_page.dart';
 import '../../features/about/about_page.dart';
 
-/// 应用主Shell - 自定义Windows 11风格标题栏 + Mica材质
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
@@ -32,42 +31,6 @@ class _AppShellState extends State<AppShell> with WindowListener {
     AboutPage(),
   ];
 
-  final List<NavigationPaneItem> _items = [
-    PaneItem(
-      icon: const Icon(FluentIcons.task_list),
-      title: const Text('同步任务'),
-      body: const SizedBox.shrink(),
-    ),
-    PaneItem(
-      icon: const Icon(FluentIcons.view),
-      title: const Text('实时监控'),
-      body: const SizedBox.shrink(),
-    ),
-    PaneItem(
-      icon: const Icon(FluentIcons.history),
-      title: const Text('版本管理'),
-      body: const SizedBox.shrink(),
-    ),
-    PaneItem(
-      icon: const Icon(FluentIcons.list),
-      title: const Text('同步日志'),
-      body: const SizedBox.shrink(),
-    ),
-  ];
-
-  final List<NavigationPaneItem> _footerItems = [
-    PaneItem(
-      icon: const Icon(FluentIcons.settings),
-      title: const Text('系统设置'),
-      body: const SizedBox.shrink(),
-    ),
-    PaneItem(
-      icon: const Icon(FluentIcons.info),
-      title: const Text('关于'),
-      body: const SizedBox.shrink(),
-    ),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -86,6 +49,22 @@ class _AppShellState extends State<AppShell> with WindowListener {
     if (mounted) setState(() => _isMaximized = maximized);
   }
 
+  Future<void> _updateWindowEffect(bool isDark, bool useMica) async {
+    if (useMica) {
+      await Window.setEffect(
+        effect: WindowEffect.mica,
+        color: isDark ? const Color(0xFF202020) : const Color(0xFFF3F3F3),
+        dark: isDark,
+      );
+    } else {
+      await Window.setEffect(
+        effect: WindowEffect.solid,
+        color: isDark ? const Color(0xFF202020) : const Color(0xFFF3F3F3),
+        dark: isDark,
+      );
+    }
+  }
+
   @override
   void onWindowMaximize() {
     if (mounted) setState(() => _isMaximized = true);
@@ -98,34 +77,69 @@ class _AppShellState extends State<AppShell> with WindowListener {
 
   @override
   Widget build(BuildContext context) {
-    final theme = context.watch<AppTheme>();
+    final theme = context.watch<ThemeManager>();
     final isDark =
         theme.themeMode == ThemeMode.dark ||
         (theme.themeMode == ThemeMode.system &&
             MediaQuery.platformBrightnessOf(context) == Brightness.dark);
 
-    return NavigationView(
-      titleBar: _buildCustomTitleBar(isDark),
-      paneBodyBuilder: (item, child) {
-        return Acrylic(
-          blurAmount: 30,
-          tintAlpha: isDark ? 0.5 : 0.7,
-          luminosityAlpha: isDark ? 0.15 : 0.05,
-          child: _pages[_selectedIndex],
-        );
-      },
-      pane: NavigationPane(
-        selected: _selectedIndex,
-        onChanged: (index) => setState(() => _selectedIndex = index),
-        displayMode: PaneDisplayMode.expanded,
-        items: _items,
-        footerItems: _footerItems,
-        size: const NavigationPaneSize(openWidth: 240),
+    _updateWindowEffect(isDark, theme.useMica);
+
+    return DefaultTextStyle(
+      style: AppStyles.textStyleBody,
+      child: NavigationView(
+        titleBar: _buildTitleBar(isDark),
+        paneBodyBuilder: (item, child) {
+          return Container(
+            color: theme.useMica ? Colors.transparent : null,
+            child: _pages[_selectedIndex],
+          );
+        },
+        pane: NavigationPane(
+          selected: _selectedIndex,
+          onChanged: (index) => setState(() => _selectedIndex = index),
+          displayMode: PaneDisplayMode.expanded,
+          size: const NavigationPaneSize(openWidth: 240),
+          items: [
+            PaneItem(
+              icon: const Icon(FluentIcons.sync_folder),
+              title: Text('同步任务', style: AppStyles.textStyleBody),
+              body: const SizedBox.shrink(),
+            ),
+            PaneItem(
+              icon: const Icon(FluentIcons.view),
+              title: Text('实时监控', style: AppStyles.textStyleBody),
+              body: const SizedBox.shrink(),
+            ),
+            PaneItem(
+              icon: const Icon(FluentIcons.history),
+              title: Text('版本管理', style: AppStyles.textStyleBody),
+              body: const SizedBox.shrink(),
+            ),
+            PaneItem(
+              icon: const Icon(FluentIcons.list),
+              title: Text('同步日志', style: AppStyles.textStyleBody),
+              body: const SizedBox.shrink(),
+            ),
+          ],
+          footerItems: [
+            PaneItem(
+              icon: const Icon(FluentIcons.settings),
+              title: Text('系统设置', style: AppStyles.textStyleBody),
+              body: const SizedBox.shrink(),
+            ),
+            PaneItem(
+              icon: const Icon(FluentIcons.info),
+              title: Text('关于', style: AppStyles.textStyleBody),
+              body: const SizedBox.shrink(),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  PreferredSizeWidget _buildCustomTitleBar(bool isDark) {
+  PreferredSizeWidget _buildTitleBar(bool isDark) {
     return PreferredSize(
       preferredSize: const Size.fromHeight(40),
       child: GestureDetector(
@@ -137,26 +151,35 @@ class _AppShellState extends State<AppShell> with WindowListener {
             children: [
               const SizedBox(width: 12),
               Container(
-                width: 20,
-                height: 20,
+                width: 18,
+                height: 18,
                 decoration: BoxDecoration(
-                  color: Colors.blue,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppStyles.primaryColor,
+                      AppStyles.primaryColor.withBlue(200),
+                    ],
+                  ),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: const Icon(
                   FluentIcons.sync_folder,
-                  size: 12,
+                  size: 10,
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(width: 8),
-              const Text(
+              const SizedBox(width: 10),
+              Text(
                 'NanoSync',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                style: AppStyles.textStyleBody.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
               ),
               const Spacer(),
-              _buildNetworkStatus(isDark),
-              const SizedBox(width: 12),
               _buildSyncStatus(isDark),
               const SizedBox(width: 8),
               _buildWindowControls(isDark),
@@ -167,45 +190,33 @@ class _AppShellState extends State<AppShell> with WindowListener {
     );
   }
 
-  Widget _buildNetworkStatus(bool isDark) {
-    return Row(
-      children: [
-        Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(
-            color: Colors.green,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          '在线',
-          style: TextStyle(
-            fontSize: 11,
-            color: isDark ? Colors.grey[80] : Colors.grey[100],
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildSyncStatus(bool isDark) {
     return Consumer<TaskProvider>(
       builder: (context, provider, _) {
         if (provider.hasRunningTask) {
-          return Row(
-            children: [
-              const SizedBox(width: 12, height: 12, child: ProgressRing()),
-              const SizedBox(width: 6),
-              Text(
-                '同步中',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDark ? Colors.grey[80] : Colors.grey[100],
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppStyles.primaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: ProgressRing(strokeWidth: 2),
                 ),
-              ),
-            ],
+                const SizedBox(width: 6),
+                Text(
+                  '同步中',
+                  style: AppStyles.textStyleCaption.copyWith(
+                    color: AppStyles.primaryColor,
+                  ),
+                ),
+              ],
+            ),
           );
         }
         return const SizedBox.shrink();
@@ -224,9 +235,7 @@ class _AppShellState extends State<AppShell> with WindowListener {
             isDark: isDark,
           ),
           _WindowButton(
-            icon: _isMaximized
-                ? FluentIcons.double_chevron_down
-                : FluentIcons.checkbox,
+            icon: _isMaximized ? FluentIcons.back_to_window : FluentIcons.stop,
             onPressed: () async {
               if (_isMaximized) {
                 await windowManager.unmaximize();
@@ -287,10 +296,10 @@ class _WindowButtonState extends State<_WindowButton> {
 
   Color _getBackgroundColor() {
     if (!_isHovering) return Colors.transparent;
-    if (widget.isClose) return Colors.red;
+    if (widget.isClose) return AppStyles.errorColor;
     return widget.isDark
-        ? Colors.white.withOpacity(0.06)
-        : Colors.black.withOpacity(0.04);
+        ? Colors.white.withValues(alpha: 0.06)
+        : Colors.black.withValues(alpha: 0.04);
   }
 
   Color _getIconColor() {
