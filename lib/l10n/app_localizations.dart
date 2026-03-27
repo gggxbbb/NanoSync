@@ -1310,6 +1310,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'变更文件摘要'**
   String get varChangesSummary;
+
+  /// No description provided for @goToVersionControl.
+  ///
+  /// In zh, this message translates to:
+  /// **'跳转到版本控制'**
+  String get goToVersionControl;
+
+  /// No description provided for @goToAutomation.
+  ///
+  /// In zh, this message translates to:
+  /// **'跳转到自动化配置'**
+  String get goToAutomation;
 }
 
 class _AppLocalizationsDelegate

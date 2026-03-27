@@ -650,4 +650,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get varChangesSummary => '变更文件摘要';
+
+  @override
+  String get goToVersionControl => '跳转到版本控制';
+
+  @override
+  String get goToAutomation => '跳转到自动化配置';
 }

@@ -413,6 +413,7 @@ class _VersionControlPageState extends State<VersionControlPage> {
   Widget _buildTab(int index, String label, IconData icon, bool isDark) {
     final theme = FluentTheme.of(context);
     final isSelected = _selectedTabIndex == index;
+    final unselectedColor = isDark ? Colors.white : Colors.black;
 
     return GestureDetector(
       onTap: () => setState(() => _selectedTabIndex = index),
@@ -428,13 +429,17 @@ class _VersionControlPageState extends State<VersionControlPage> {
         ),
         child: Row(
           children: [
-            Icon(icon, size: 14, color: isSelected ? theme.accentColor : null),
+            Icon(
+              icon,
+              size: 14,
+              color: isSelected ? theme.accentColor : unselectedColor,
+            ),
             const SizedBox(width: 8),
             Text(
               label,
               style: AppStyles.textStyleBody.copyWith(
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected ? theme.accentColor : null,
+                color: isSelected ? theme.accentColor : unselectedColor,
               ),
             ),
           ],

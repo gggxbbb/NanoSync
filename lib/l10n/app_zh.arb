@@ -279,5 +279,7 @@
   "varDate": "日期 (YYYY-MM-DD)",
   "varTime": "时间 (HH:MM:SS)",
   "varBranch": "当前分支名",
-  "varChangesSummary": "变更文件摘要"
+  "varChangesSummary": "变更文件摘要",
+  "goToVersionControl": "跳转到版本控制",
+  "goToAutomation": "跳转到自动化配置"
 }

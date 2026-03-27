@@ -14,11 +14,48 @@ import '../../features/settings/settings_page.dart';
 import '../../features/about/about_page.dart';
 import '../../l10n/l10n.dart';
 
+/// 页面索引常量
+class AppPageIndex {
+  static const int repositories = 0;
+  static const int remoteConnections = 1;
+  static const int versionControl = 2;
+  static const int automation = 3;
+  static const int syncLogs = 4;
+  static const int settings = 5;
+  static const int about = 6;
+}
+
+/// InheritedWidget 用于在子组件中访问 AppShell 状态
+class _AppShellScope extends InheritedWidget {
+  final _AppShellState shellState;
+
+  const _AppShellScope({required this.shellState, required super.child});
+
+  static _AppShellState of(BuildContext context) {
+    final scope = context.dependOnInheritedWidgetOfExactType<_AppShellScope>();
+    assert(scope != null, 'AppShellScope not found in context');
+    return scope!.shellState;
+  }
+
+  @override
+  bool updateShouldNotify(_AppShellScope oldWidget) => false;
+}
+
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
   @override
   State<AppShell> createState() => _AppShellState();
+
+  /// 导航到指定页面，可选择性地选择一个仓库
+  static void navigateToPage(
+    BuildContext context, {
+    required int pageIndex,
+    String? repositoryId,
+  }) {
+    final shellState = _AppShellScope.of(context);
+    shellState.navigateToPage(pageIndex, repositoryId: repositoryId);
+  }
 }
 
 class _AppShellState extends State<AppShell> with WindowListener {
@@ -99,6 +136,15 @@ class _AppShellState extends State<AppShell> with WindowListener {
     }
   }
 
+  /// 导航到指定页面，可选择性地选择一个仓库
+  void navigateToPage(int pageIndex, {String? repositoryId}) {
+    if (repositoryId != null) {
+      final vcProvider = context.read<VcRepositoryProvider>();
+      vcProvider.selectRepository(repositoryId);
+    }
+    setState(() => _selectedIndex = pageIndex);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = context.watch<ThemeManager>();
@@ -124,67 +170,73 @@ class _AppShellState extends State<AppShell> with WindowListener {
 
     return DefaultTextStyle(
       style: AppStyles.textStyleBody,
-      child: NavigationView(
-        titleBar: _buildTitleBar(isDark),
-        paneBodyBuilder: (item, child) {
-          return Container(
-            color: theme.useMica ? Colors.transparent : null,
-            child: pages[_selectedIndex],
-          );
-        },
-        pane: NavigationPane(
-          selected: _selectedIndex,
-          onChanged: (index) => setState(() => _selectedIndex = index),
-          displayMode: PaneDisplayMode.expanded,
-          size: const NavigationPaneSize(openWidth: 240),
-          items: [
-            PaneItem(
-              icon: const Icon(FluentIcons.view),
-              title: Text(l10n.navRepositories, style: AppStyles.textStyleBody),
-              body: const SizedBox.shrink(),
-            ),
-            PaneItem(
-              icon: const Icon(FluentIcons.server),
-              title: Text(
-                l10n.navRemoteConnections,
-                style: AppStyles.textStyleBody,
+      child: _AppShellScope(
+        shellState: this,
+        child: NavigationView(
+          titleBar: _buildTitleBar(isDark),
+          paneBodyBuilder: (item, child) {
+            return Container(
+              color: theme.useMica ? Colors.transparent : null,
+              child: pages[_selectedIndex],
+            );
+          },
+          pane: NavigationPane(
+            selected: _selectedIndex,
+            onChanged: (index) => setState(() => _selectedIndex = index),
+            displayMode: PaneDisplayMode.expanded,
+            size: const NavigationPaneSize(openWidth: 240),
+            items: [
+              PaneItem(
+                icon: const Icon(FluentIcons.view),
+                title: Text(
+                  l10n.navRepositories,
+                  style: AppStyles.textStyleBody,
+                ),
+                body: const SizedBox.shrink(),
               ),
-              body: const SizedBox.shrink(),
-            ),
-            PaneItem(
-              icon: const Icon(FluentIcons.git_graph),
-              title: Text(
-                l10n.navVersionControl,
-                style: AppStyles.textStyleBody,
+              PaneItem(
+                icon: const Icon(FluentIcons.server),
+                title: Text(
+                  l10n.navRemoteConnections,
+                  style: AppStyles.textStyleBody,
+                ),
+                body: const SizedBox.shrink(),
               ),
-              body: const SizedBox.shrink(),
-            ),
-            PaneItem(
-              icon: const Icon(FluentIcons.settings),
-              title: Text(
-                l10n.automationPageTitle,
-                style: AppStyles.textStyleBody,
+              PaneItem(
+                icon: const Icon(FluentIcons.git_graph),
+                title: Text(
+                  l10n.navVersionControl,
+                  style: AppStyles.textStyleBody,
+                ),
+                body: const SizedBox.shrink(),
               ),
-              body: const SizedBox.shrink(),
-            ),
-            PaneItem(
-              icon: const Icon(FluentIcons.list),
-              title: Text(l10n.navSyncLogs, style: AppStyles.textStyleBody),
-              body: const SizedBox.shrink(),
-            ),
-          ],
-          footerItems: [
-            PaneItem(
-              icon: const Icon(FluentIcons.settings),
-              title: Text(l10n.navSettings, style: AppStyles.textStyleBody),
-              body: const SizedBox.shrink(),
-            ),
-            PaneItem(
-              icon: const Icon(FluentIcons.info),
-              title: Text(l10n.navAbout, style: AppStyles.textStyleBody),
-              body: const SizedBox.shrink(),
-            ),
-          ],
+              PaneItem(
+                icon: const Icon(FluentIcons.settings),
+                title: Text(
+                  l10n.automationPageTitle,
+                  style: AppStyles.textStyleBody,
+                ),
+                body: const SizedBox.shrink(),
+              ),
+              PaneItem(
+                icon: const Icon(FluentIcons.list),
+                title: Text(l10n.navSyncLogs, style: AppStyles.textStyleBody),
+                body: const SizedBox.shrink(),
+              ),
+            ],
+            footerItems: [
+              PaneItem(
+                icon: const Icon(FluentIcons.settings),
+                title: Text(l10n.navSettings, style: AppStyles.textStyleBody),
+                body: const SizedBox.shrink(),
+              ),
+              PaneItem(
+                icon: const Icon(FluentIcons.info),
+                title: Text(l10n.navAbout, style: AppStyles.textStyleBody),
+                body: const SizedBox.shrink(),
+              ),
+            ],
+          ),
         ),
       ),
     );

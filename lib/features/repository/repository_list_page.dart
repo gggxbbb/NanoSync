@@ -1,9 +1,11 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/remote_connection.dart';
 import '../../data/services/new_sync_engine.dart';
 import '../../data/services/repository_manager.dart';
 import '../../data/services/remote_connection_manager.dart';
+import '../../shared/widgets/app_shell.dart';
 import '../../shared/widgets/components/safe_combo_box.dart';
 import '../../l10n/l10n.dart';
 
@@ -295,6 +297,43 @@ class _RepositoryCardState extends State<_RepositoryCard> {
                 ],
               ),
             ),
+            // 快捷跳转按钮
+            Tooltip(
+              message: context.l10n.goToVersionControl,
+              child: IconButton(
+                icon: Icon(
+                  FluentIcons.git_graph,
+                  size: 18,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+                onPressed: () {
+                  AppShell.navigateToPage(
+                    context,
+                    pageIndex: AppPageIndex.versionControl,
+                    repositoryId: widget.repository.id,
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 4),
+            Tooltip(
+              message: context.l10n.goToAutomation,
+              child: IconButton(
+                icon: Icon(
+                  FluentIcons.settings,
+                  size: 18,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+                onPressed: () {
+                  AppShell.navigateToPage(
+                    context,
+                    pageIndex: AppPageIndex.automation,
+                    repositoryId: widget.repository.id,
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
             if (_isLoading)
               const ProgressRing()
             else
@@ -366,9 +405,18 @@ class _AddRepositoryDialogState extends State<_AddRepositoryDialog> {
                   ),
                   const SizedBox(width: 8),
                   Button(
-                    child: const Text('Browse'),
+                    child: Text(context.l10n.browse),
                     onPressed: () async {
-                      // TODO: Implement folder picker
+                      final result = await FilePicker.platform
+                          .getDirectoryPath();
+                      if (result != null) {
+                        _pathController.text = result;
+                        // 自动填充仓库名称
+                        if (_nameController.text.isEmpty) {
+                          final name = result.split(RegExp(r'[/\\]')).last;
+                          _nameController.text = name;
+                        }
+                      }
                     },
                   ),
                 ],
@@ -560,9 +608,13 @@ class _CloneRepositoryDialogState extends State<_CloneRepositoryDialog> {
                   ),
                   const SizedBox(width: 8),
                   Button(
-                    child: const Text('Browse'),
+                    child: Text(context.l10n.browse),
                     onPressed: () async {
-                      // TODO: Implement folder picker
+                      final result = await FilePicker.platform
+                          .getDirectoryPath();
+                      if (result != null) {
+                        _localPathController.text = result;
+                      }
                     },
                   ),
                 ],
