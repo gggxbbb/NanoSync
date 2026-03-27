@@ -3,6 +3,7 @@ import 'package:path/path.dart' as p;
 import '../models/vc_models.dart';
 import '../vc_database.dart';
 import '../../core/utils/checksum_util.dart';
+import '../../core/utils/binary_optimization.dart';
 
 enum VcOperationResult {
   success,
@@ -263,19 +264,47 @@ class VcEngine {
 
     final lastTreeMap = {for (var e in lastTree) e.relativePath: e};
 
+    // 收集所有需要处理的文件路径
+    final filesToProcess = <String, File>{};
     await for (final entity in Directory(localPath).list(recursive: true)) {
       if (entity is! File) continue;
-
       final relativePath = p.relative(entity.path, from: localPath);
       if (_isIgnoredPath(relativePath, ignoreRules)) continue;
+      filesToProcess[relativePath] = entity;
+    }
 
-      final file = entity;
+    // 使用优化的批量哈希计算
+    final filePaths = filesToProcess.values.map((f) => f.path).toList();
+    final hashResults = await BinaryOptimizationUtil.batchCalculateHashes(
+      filePaths,
+      parallelism: 4,
+    );
+
+    for (final entry in filesToProcess.entries) {
+      final relativePath = entry.key;
+      final file = entry.value;
       final stat = await file.stat();
-      final newHash = await ChecksumUtil.calculateCrc32Chunked(file.path);
+      final newHash = hashResults[file.path] ?? '';
 
       if (lastTreeMap.containsKey(relativePath)) {
         final oldEntry = lastTreeMap[relativePath]!;
-        if (oldEntry.fileHash != newHash) {
+        // 快速路径：先检查文件大小和修改时间
+        if (stat.size != oldEntry.fileSize) {
+          // 大小不同，确定已修改
+          changes.add(
+            VcFileChange(
+              repositoryId: repositoryId,
+              relativePath: relativePath,
+              changeType: VcChangeType.modified,
+              status: VcFileStatus.modified,
+              oldSize: oldEntry.fileSize,
+              newSize: stat.size,
+              oldHash: oldEntry.fileHash,
+              newHash: newHash,
+            ),
+          );
+        } else if (oldEntry.fileHash != newHash) {
+          // 大小相同但哈希不同
           changes.add(
             VcFileChange(
               repositoryId: repositoryId,
@@ -507,7 +536,15 @@ class VcEngine {
           if (await File(objectPath).exists()) {
             final targetPath = p.join(repo.localPath, path);
             await File(targetPath).parent.create(recursive: true);
-            await File(objectPath).copy(targetPath);
+            // 使用优化的硬链接或复制
+            final success = await BinaryOptimizationUtil.createHardLink(
+              sourcePath: objectPath,
+              targetPath: targetPath,
+            );
+            if (!success) {
+              // 回退到普通复制
+              await File(objectPath).copy(targetPath);
+            }
           }
         }
 
@@ -644,7 +681,15 @@ class VcEngine {
           if (await File(sourcePath).exists() &&
               !await File(objectPath).exists()) {
             await File(objectPath).parent.create(recursive: true);
-            await File(sourcePath).copy(objectPath);
+            // 使用优化的硬链接或复制
+            final success = await BinaryOptimizationUtil.createHardLink(
+              sourcePath: sourcePath,
+              targetPath: objectPath,
+            );
+            if (!success) {
+              // 回退到普通复制
+              await File(sourcePath).copy(objectPath);
+            }
           }
         }
 
@@ -858,7 +903,15 @@ class VcEngine {
 
       if (await File(objectPath).exists()) {
         await File(targetPath).parent.create(recursive: true);
-        await File(objectPath).copy(targetPath);
+        // 使用优化的硬链接或复制
+        final success = await BinaryOptimizationUtil.createHardLink(
+          sourcePath: objectPath,
+          targetPath: targetPath,
+        );
+        if (!success) {
+          // 回退到普通复制
+          await File(objectPath).copy(targetPath);
+        }
       }
     }
   }
