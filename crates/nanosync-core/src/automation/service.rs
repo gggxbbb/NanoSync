@@ -4,7 +4,6 @@ use crate::database::RepositoryDatabase;
 use crate::device::DeviceIdentity;
 use crate::error::{Error, Result};
 use crate::models::*;
-use std::path::Path;
 use tracing::info;
 
 /// 自动化规则服务

@@ -1,7 +1,6 @@
 //! SMB 协议实现
 
-use crate::error::{Error, Result};
-use crate::models::*;
+use crate::error::Result;
 
 /// SMB 客户端
 pub struct SmbClient {
@@ -50,35 +49,35 @@ impl SmbClient {
     }
 
     /// 下载文件
-    pub async fn download_file(&self, share: &str, remote_path: &str, local_path: &std::path::Path) -> Result<()> {
+    pub async fn download_file(&self, _share: &str, _remote_path: &str, _local_path: &std::path::Path) -> Result<()> {
         // TODO: 实现文件下载
         
         Ok(())
     }
 
     /// 上传文件
-    pub async fn upload_file(&self, share: &str, local_path: &std::path::Path, remote_path: &str) -> Result<()> {
+    pub async fn upload_file(&self, _share: &str, _local_path: &std::path::Path, _remote_path: &str) -> Result<()> {
         // TODO: 实现文件上传
         
         Ok(())
     }
 
     /// 确保目录存在
-    pub async fn ensure_directory(&self, share: &str, path: &str) -> Result<()> {
+    pub async fn ensure_directory(&self, _share: &str, _path: &str) -> Result<()> {
         // TODO: 实现目录创建
         
         Ok(())
     }
 
     /// 删除文件
-    pub async fn delete_file(&self, share: &str, remote_path: &str) -> Result<()> {
+    pub async fn delete_file(&self, _share: &str, _remote_path: &str) -> Result<()> {
         // TODO: 实现文件删除
         
         Ok(())
     }
 
     /// 列出目录
-    pub async fn list_directory(&self, share: &str, path: &str) -> Result<Vec<RemoteFileInfo>> {
+    pub async fn list_directory(&self, _share: &str, _path: &str) -> Result<Vec<RemoteFileInfo>> {
         // TODO: 实现目录列表
         
         Ok(vec![])

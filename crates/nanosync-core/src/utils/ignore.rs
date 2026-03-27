@@ -8,7 +8,6 @@
 use crate::error::{Error, Result};
 use regex::Regex;
 use std::path::Path;
-use std::sync::Arc;
 
 /// 忽略规则类型
 #[derive(Debug, Clone)]

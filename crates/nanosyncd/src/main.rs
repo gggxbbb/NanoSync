@@ -80,7 +80,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Run { db, debug } => {
             run_service(&db, debug).await?;
         }
-        Commands::Install { name } => {
+        Commands::Install { name: _ } => {
             #[cfg(windows)]
             {
                 service::windows::install_service(&name)?;
@@ -91,7 +91,7 @@ async fn main() -> anyhow::Result<()> {
                 println!("请手动配置 systemd 或其他 init 系统");
             }
         }
-        Commands::Uninstall { name } => {
+        Commands::Uninstall { name: _ } => {
             #[cfg(windows)]
             {
                 service::windows::uninstall_service(&name)?;
@@ -111,7 +111,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 /// 运行服务
-async fn run_service(db_path: &str, debug: bool) -> anyhow::Result<()> {
+async fn run_service(db_path: &str, _debug: bool) -> anyhow::Result<()> {
     use tracing::info;
 
     info!("NanoSync 服务启动中...");
