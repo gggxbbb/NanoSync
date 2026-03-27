@@ -117,7 +117,9 @@ class _RemoteConnectionsPageState extends State<RemoteConnectionsPage> {
         context: context,
         builder: (context) => ContentDialog(
           title: Text(
-            result.success ? context.l10n.connectionSuccessful : context.l10n.connectionFailed,
+            result.success
+                ? context.l10n.connectionSuccessful
+                : context.l10n.connectionFailed,
           ),
           content: Text(
             result.success

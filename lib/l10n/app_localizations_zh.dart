@@ -506,4 +506,148 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get feature6 => '系统托盘集成，后台静默运行';
+
+  @override
+  String get automationPageTitle => '自动化配置';
+
+  @override
+  String get automationRules => '自动化规则';
+
+  @override
+  String get newRule => '新建规则';
+
+  @override
+  String get ruleEnabled => '已启用';
+
+  @override
+  String get ruleDisabled => '已禁用';
+
+  @override
+  String get triggerType => '触发方式';
+
+  @override
+  String get timeBased => '定时';
+
+  @override
+  String get changeBased => '修改时触发';
+
+  @override
+  String get actionType => '操作类型';
+
+  @override
+  String get intervalMinutes => '间隔时间(分钟)';
+
+  @override
+  String get debounceSeconds => '防抖延迟(秒)';
+
+  @override
+  String get autoCommitOnInterval => '自动提交';
+
+  @override
+  String get autoPushOnInterval => '自动推送';
+
+  @override
+  String get commitOnChange => '修改时自动提交';
+
+  @override
+  String get pushAfterCommit => '提交后推送';
+
+  @override
+  String get commitMessageTemplate => '提交信息模板';
+
+  @override
+  String get templateVariables =>
+      '可用变量: repo_name(仓库名) file_count(文件数) additions/deletions(增删行数) timestamp(时间戳) date(日期)';
+
+  @override
+  String get lastTriggered => '最后触发';
+
+  @override
+  String get noAutomationRules => '暂无自动化规则';
+
+  @override
+  String get createFirstRule => '创建第一个规则';
+
+  @override
+  String get editRule => '编辑规则';
+
+  @override
+  String get deleteRule => '删除规则';
+
+  @override
+  String deleteRuleConfirm(Object name) {
+    return '确定要删除规则\"$name\"吗？';
+  }
+
+  @override
+  String get selectRepository => '选择仓库:';
+
+  @override
+  String get noNoRepositories => '暂无版本库';
+
+  @override
+  String get noRepositoriesHint => '请先在\\\"仓库\\\"页面注册仓库';
+
+  @override
+  String get noRegisteredRepositories => '暂无已注册仓库';
+
+  @override
+  String get goToRepositoriesPage => '前往仓库页面';
+
+  @override
+  String get timeTrigger => '定时触发';
+
+  @override
+  String get changeTrigger => '修改时触发';
+
+  @override
+  String get commitMessageTemplateTitle => '提交信息模板';
+
+  @override
+  String get availableVariables => '可用变量 (点击插入):';
+
+  @override
+  String get preview => '预览效果:';
+
+  @override
+  String get commonTemplates => '常用模板:';
+
+  @override
+  String get simpleCommit => '简单提交';
+
+  @override
+  String get detailedCommit => '详细提交';
+
+  @override
+  String get timestampedCommit => '带时间戳';
+
+  @override
+  String get semanticCommit => '语义化';
+
+  @override
+  String get varRepoName => '仓库名称';
+
+  @override
+  String get varFileCount => '变更文件数量';
+
+  @override
+  String get varAdditions => '新增行数';
+
+  @override
+  String get varDeletions => '删除行数';
+
+  @override
+  String get varTimestamp => 'Unix时间戳';
+
+  @override
+  String get varDate => '日期 (YYYY-MM-DD)';
+
+  @override
+  String get varTime => '时间 (HH:MM:SS)';
+
+  @override
+  String get varBranch => '当前分支名';
+
+  @override
+  String get varChangesSummary => '变更文件摘要';
 }

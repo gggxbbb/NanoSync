@@ -45,40 +45,24 @@ class _LogPageState extends State<LogPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = FluentTheme.of(context).brightness == Brightness.dark;
-    final primaryTextColor = isDark ? Colors.white : Colors.black;
 
     return ScaffoldPage(
       header: PageHeader(
-        title: Text(
-          context.l10n.syncLogsPageTitle,
-          style: AppStyles.textStyleTitle.copyWith(color: primaryTextColor),
-        ),
-        commandBar: Align(
-          alignment: Alignment.centerRight,
-          child: CommandBar(
-            primaryItems: [
-              CommandBarButton(
-                icon: const Icon(FluentIcons.refresh),
-                label: Text(
-                  context.l10n.refresh,
-                  style: AppStyles.textStyleButton.copyWith(
-                    color: primaryTextColor,
-                  ),
-                ),
-                onPressed: _loadLogs,
-              ),
-              CommandBarButton(
-                icon: const Icon(FluentIcons.delete),
-                label: Text(
-                  context.l10n.clearLogs,
-                  style: AppStyles.textStyleButton.copyWith(
-                    color: primaryTextColor,
-                  ),
-                ),
-                onPressed: _clearLogs,
-              ),
-            ],
-          ),
+        title: Text(context.l10n.syncLogsPageTitle),
+        commandBar: CommandBar(
+          mainAxisAlignment: MainAxisAlignment.end,
+          primaryItems: [
+            CommandBarButton(
+              icon: const Icon(FluentIcons.refresh),
+              label: Text(context.l10n.refresh),
+              onPressed: _loadLogs,
+            ),
+            CommandBarButton(
+              icon: const Icon(FluentIcons.delete),
+              label: Text(context.l10n.clearLogs),
+              onPressed: _clearLogs,
+            ),
+          ],
         ),
       ),
       content: Column(
@@ -165,13 +149,12 @@ class _LogPageState extends State<LogPage> {
                       Flexible(
                         child: Text(
                           taskName,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
+                          style: AppStyles.textStyleButton.copyWith(
                             fontStyle: isDeleted
                                 ? FontStyle.italic
                                 : FontStyle.normal,
                             color: isDeleted
-                                ? (isDark ? Colors.grey[100] : Colors.grey[140])
+                                ? AppStyles.lightTextSecondary(isDark)
                                 : null,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -192,8 +175,7 @@ class _LogPageState extends State<LogPage> {
                           ),
                           child: Text(
                             '已删除',
-                            style: TextStyle(
-                              fontSize: 10,
+                            style: AppStyles.textStyleCaption.copyWith(
                               color: AppStyles.warningColor,
                             ),
                           ),
@@ -207,18 +189,16 @@ class _LogPageState extends State<LogPage> {
                         : isFailed
                         ? '失败'
                         : '进行中'} | 成功: ${log.successCount} 失败: ${log.failCount}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? Colors.grey[100] : Colors.grey[140],
+                    style: AppStyles.textStyleCaption.copyWith(
+                      color: AppStyles.lightTextSecondary(isDark),
                     ),
                   ),
                   if (log.sourceDeviceName.isNotEmpty ||
                       log.sourceUsername.isNotEmpty)
                     Text(
                       '来源: ${log.sourceDeviceName.isEmpty ? '-' : log.sourceDeviceName} / ${log.sourceUsername.isEmpty ? '-' : log.sourceUsername}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? Colors.grey[100] : Colors.grey[140],
+                      style: AppStyles.textStyleCaption.copyWith(
+                        color: AppStyles.lightTextSecondary(isDark),
                       ),
                     ),
                 ],
@@ -238,28 +218,30 @@ class _LogPageState extends State<LogPage> {
         content: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildInfoRow('开始时间', _formatTime(log.startTime)),
+            _buildInfoRow('开始时间', _formatTime(log.startTime), isDark),
             _buildInfoRow(
               '结束时间',
               log.endTime != null ? _formatTime(log.endTime!) : '进行中',
+              isDark,
             ),
-            _buildInfoRow('总耗时', log.durationText),
-            _buildInfoRow('总文件数', log.totalFiles.toString()),
-            _buildInfoRow('成功', log.successCount.toString()),
-            _buildInfoRow('失败', log.failCount.toString()),
-            _buildInfoRow('跳过', log.skipCount.toString()),
+            _buildInfoRow('总耗时', log.durationText, isDark),
+            _buildInfoRow('总文件数', log.totalFiles.toString(), isDark),
+            _buildInfoRow('成功', log.successCount.toString(), isDark),
+            _buildInfoRow('失败', log.failCount.toString(), isDark),
+            _buildInfoRow('跳过', log.skipCount.toString(), isDark),
             if (log.errorMessage != null) ...[
               const SizedBox(height: 8),
               Text(
                 '错误信息:',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
+                style: AppStyles.textStyleButton.copyWith(
                   color: AppStyles.errorColor,
                 ),
               ),
               Text(
                 log.errorMessage!,
-                style: TextStyle(color: AppStyles.errorColor),
+                style: AppStyles.textStyleBody.copyWith(
+                  color: AppStyles.errorColor,
+                ),
               ),
             ],
           ],
@@ -268,16 +250,21 @@ class _LogPageState extends State<LogPage> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(String label, String value, bool isDark) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
           SizedBox(
             width: 80,
-            child: Text(label, style: TextStyle(color: Colors.grey[120])),
+            child: Text(
+              label,
+              style: AppStyles.textStyleBody.copyWith(
+                color: AppStyles.lightTextSecondary(isDark),
+              ),
+            ),
           ),
-          Text(value),
+          Text(value, style: AppStyles.textStyleBody),
         ],
       ),
     );

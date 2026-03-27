@@ -1028,6 +1028,288 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'系统托盘集成，后台静默运行'**
   String get feature6;
+
+  /// No description provided for @automationPageTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动化配置'**
+  String get automationPageTitle;
+
+  /// No description provided for @automationRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动化规则'**
+  String get automationRules;
+
+  /// No description provided for @newRule.
+  ///
+  /// In zh, this message translates to:
+  /// **'新建规则'**
+  String get newRule;
+
+  /// No description provided for @ruleEnabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已启用'**
+  String get ruleEnabled;
+
+  /// No description provided for @ruleDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已禁用'**
+  String get ruleDisabled;
+
+  /// No description provided for @triggerType.
+  ///
+  /// In zh, this message translates to:
+  /// **'触发方式'**
+  String get triggerType;
+
+  /// No description provided for @timeBased.
+  ///
+  /// In zh, this message translates to:
+  /// **'定时'**
+  String get timeBased;
+
+  /// No description provided for @changeBased.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改时触发'**
+  String get changeBased;
+
+  /// No description provided for @actionType.
+  ///
+  /// In zh, this message translates to:
+  /// **'操作类型'**
+  String get actionType;
+
+  /// No description provided for @intervalMinutes.
+  ///
+  /// In zh, this message translates to:
+  /// **'间隔时间(分钟)'**
+  String get intervalMinutes;
+
+  /// No description provided for @debounceSeconds.
+  ///
+  /// In zh, this message translates to:
+  /// **'防抖延迟(秒)'**
+  String get debounceSeconds;
+
+  /// No description provided for @autoCommitOnInterval.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动提交'**
+  String get autoCommitOnInterval;
+
+  /// No description provided for @autoPushOnInterval.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动推送'**
+  String get autoPushOnInterval;
+
+  /// No description provided for @commitOnChange.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改时自动提交'**
+  String get commitOnChange;
+
+  /// No description provided for @pushAfterCommit.
+  ///
+  /// In zh, this message translates to:
+  /// **'提交后推送'**
+  String get pushAfterCommit;
+
+  /// No description provided for @commitMessageTemplate.
+  ///
+  /// In zh, this message translates to:
+  /// **'提交信息模板'**
+  String get commitMessageTemplate;
+
+  /// No description provided for @templateVariables.
+  ///
+  /// In zh, this message translates to:
+  /// **'可用变量: repo_name(仓库名) file_count(文件数) additions/deletions(增删行数) timestamp(时间戳) date(日期)'**
+  String get templateVariables;
+
+  /// No description provided for @lastTriggered.
+  ///
+  /// In zh, this message translates to:
+  /// **'最后触发'**
+  String get lastTriggered;
+
+  /// No description provided for @noAutomationRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无自动化规则'**
+  String get noAutomationRules;
+
+  /// No description provided for @createFirstRule.
+  ///
+  /// In zh, this message translates to:
+  /// **'创建第一个规则'**
+  String get createFirstRule;
+
+  /// No description provided for @editRule.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑规则'**
+  String get editRule;
+
+  /// No description provided for @deleteRule.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除规则'**
+  String get deleteRule;
+
+  /// No description provided for @deleteRuleConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除规则\"{name}\"吗？'**
+  String deleteRuleConfirm(Object name);
+
+  /// No description provided for @selectRepository.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择仓库:'**
+  String get selectRepository;
+
+  /// No description provided for @noNoRepositories.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无版本库'**
+  String get noNoRepositories;
+
+  /// No description provided for @noRepositoriesHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先在\\\"仓库\\\"页面注册仓库'**
+  String get noRepositoriesHint;
+
+  /// No description provided for @noRegisteredRepositories.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无已注册仓库'**
+  String get noRegisteredRepositories;
+
+  /// No description provided for @goToRepositoriesPage.
+  ///
+  /// In zh, this message translates to:
+  /// **'前往仓库页面'**
+  String get goToRepositoriesPage;
+
+  /// No description provided for @timeTrigger.
+  ///
+  /// In zh, this message translates to:
+  /// **'定时触发'**
+  String get timeTrigger;
+
+  /// No description provided for @changeTrigger.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改时触发'**
+  String get changeTrigger;
+
+  /// No description provided for @commitMessageTemplateTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'提交信息模板'**
+  String get commitMessageTemplateTitle;
+
+  /// No description provided for @availableVariables.
+  ///
+  /// In zh, this message translates to:
+  /// **'可用变量 (点击插入):'**
+  String get availableVariables;
+
+  /// No description provided for @preview.
+  ///
+  /// In zh, this message translates to:
+  /// **'预览效果:'**
+  String get preview;
+
+  /// No description provided for @commonTemplates.
+  ///
+  /// In zh, this message translates to:
+  /// **'常用模板:'**
+  String get commonTemplates;
+
+  /// No description provided for @simpleCommit.
+  ///
+  /// In zh, this message translates to:
+  /// **'简单提交'**
+  String get simpleCommit;
+
+  /// No description provided for @detailedCommit.
+  ///
+  /// In zh, this message translates to:
+  /// **'详细提交'**
+  String get detailedCommit;
+
+  /// No description provided for @timestampedCommit.
+  ///
+  /// In zh, this message translates to:
+  /// **'带时间戳'**
+  String get timestampedCommit;
+
+  /// No description provided for @semanticCommit.
+  ///
+  /// In zh, this message translates to:
+  /// **'语义化'**
+  String get semanticCommit;
+
+  /// No description provided for @varRepoName.
+  ///
+  /// In zh, this message translates to:
+  /// **'仓库名称'**
+  String get varRepoName;
+
+  /// No description provided for @varFileCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'变更文件数量'**
+  String get varFileCount;
+
+  /// No description provided for @varAdditions.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增行数'**
+  String get varAdditions;
+
+  /// No description provided for @varDeletions.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除行数'**
+  String get varDeletions;
+
+  /// No description provided for @varTimestamp.
+  ///
+  /// In zh, this message translates to:
+  /// **'Unix时间戳'**
+  String get varTimestamp;
+
+  /// No description provided for @varDate.
+  ///
+  /// In zh, this message translates to:
+  /// **'日期 (YYYY-MM-DD)'**
+  String get varDate;
+
+  /// No description provided for @varTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'时间 (HH:MM:SS)'**
+  String get varTime;
+
+  /// No description provided for @varBranch.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前分支名'**
+  String get varBranch;
+
+  /// No description provided for @varChangesSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'变更文件摘要'**
+  String get varChangesSummary;
 }
 
 class _AppLocalizationsDelegate

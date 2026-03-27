@@ -8,6 +8,7 @@ import '../providers/vc_repository_provider.dart';
 import '../../features/repository/repository_list_page.dart';
 import '../../features/remote/remote_connections_page.dart';
 import '../../features/version_control/vc_page.dart';
+import '../../features/automation/automation_page.dart';
 import '../../features/sync_log/log_page.dart';
 import '../../features/settings/settings_page.dart';
 import '../../features/about/about_page.dart';
@@ -113,6 +114,7 @@ class _AppShellState extends State<AppShell> with WindowListener {
       const RepositoryListPage(),
       const RemoteConnectionsPage(),
       VersionControlPage(repositoryId: vcProvider.currentRepository?.id),
+      const AutomationPage(),
       const LogPage(),
       const SettingsPage(),
       const AboutPage(),
@@ -151,7 +153,18 @@ class _AppShellState extends State<AppShell> with WindowListener {
             ),
             PaneItem(
               icon: const Icon(FluentIcons.git_graph),
-              title: Text(l10n.navVersionControl, style: AppStyles.textStyleBody),
+              title: Text(
+                l10n.navVersionControl,
+                style: AppStyles.textStyleBody,
+              ),
+              body: const SizedBox.shrink(),
+            ),
+            PaneItem(
+              icon: const Icon(FluentIcons.settings),
+              title: Text(
+                l10n.automationPageTitle,
+                style: AppStyles.textStyleBody,
+              ),
               body: const SizedBox.shrink(),
             ),
             PaneItem(

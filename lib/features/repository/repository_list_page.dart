@@ -116,7 +116,7 @@ class _RepositoryListPageState extends State<RepositoryListPage> {
                               const SizedBox(height: 8),
                               if (_searchQuery.isEmpty)
                                 FilledButton(
-                                child: Text(context.l10n.addRepository),
+                                  child: Text(context.l10n.addRepository),
                                   onPressed: () => _showAddRepositoryDialog(),
                                 ),
                             ],
@@ -275,7 +275,10 @@ class _RepositoryCardState extends State<_RepositoryCard> {
                     },
                   ),
                   const SizedBox(width: 8),
-                  FilledButton(child: Text(context.l10n.sync), onPressed: _sync),
+                  FilledButton(
+                    child: Text(context.l10n.sync),
+                    onPressed: _sync,
+                  ),
                 ],
               ),
           ],
