@@ -11,6 +11,7 @@ import '../../features/version_control/vc_page.dart';
 import '../../features/sync_log/log_page.dart';
 import '../../features/settings/settings_page.dart';
 import '../../features/about/about_page.dart';
+import '../../l10n/l10n.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -106,6 +107,8 @@ class _AppShellState extends State<AppShell> with WindowListener {
         (theme.themeMode == ThemeMode.system &&
             MediaQuery.platformBrightnessOf(context) == Brightness.dark);
 
+    final l10n = context.l10n;
+
     final pages = [
       const RepositoryListPage(),
       const RemoteConnectionsPage(),
@@ -135,34 +138,37 @@ class _AppShellState extends State<AppShell> with WindowListener {
           items: [
             PaneItem(
               icon: const Icon(FluentIcons.view),
-              title: Text('仓库', style: AppStyles.textStyleBody),
+              title: Text(l10n.navRepositories, style: AppStyles.textStyleBody),
               body: const SizedBox.shrink(),
             ),
             PaneItem(
               icon: const Icon(FluentIcons.server),
-              title: Text('远程连接', style: AppStyles.textStyleBody),
+              title: Text(
+                l10n.navRemoteConnections,
+                style: AppStyles.textStyleBody,
+              ),
               body: const SizedBox.shrink(),
             ),
             PaneItem(
               icon: const Icon(FluentIcons.git_graph),
-              title: Text('版本控制', style: AppStyles.textStyleBody),
+              title: Text(l10n.navVersionControl, style: AppStyles.textStyleBody),
               body: const SizedBox.shrink(),
             ),
             PaneItem(
               icon: const Icon(FluentIcons.list),
-              title: Text('同步日志', style: AppStyles.textStyleBody),
+              title: Text(l10n.navSyncLogs, style: AppStyles.textStyleBody),
               body: const SizedBox.shrink(),
             ),
           ],
           footerItems: [
             PaneItem(
               icon: const Icon(FluentIcons.settings),
-              title: Text('系统设置', style: AppStyles.textStyleBody),
+              title: Text(l10n.navSettings, style: AppStyles.textStyleBody),
               body: const SizedBox.shrink(),
             ),
             PaneItem(
               icon: const Icon(FluentIcons.info),
-              title: Text('关于', style: AppStyles.textStyleBody),
+              title: Text(l10n.navAbout, style: AppStyles.textStyleBody),
               body: const SizedBox.shrink(),
             ),
           ],
@@ -225,15 +231,23 @@ class _AppShellState extends State<AppShell> with WindowListener {
   Widget _buildSyncStatus(bool isDark) {
     final fp = _deviceIdentity.fingerprint;
     final shortFp = fp.length > 8 ? fp.substring(fp.length - 8) : fp;
+    final l10n = context.l10n;
     final deviceName = _deviceIdentity.deviceName.isEmpty
-        ? 'unknown-device'
+        ? l10n.unknownDevice
         : _deviceIdentity.deviceName;
-    final username =
-        _deviceIdentity.username.isEmpty ? 'unknown-user' : _deviceIdentity.username;
+    final username = _deviceIdentity.username.isEmpty
+        ? l10n.unknownUser
+        : _deviceIdentity.username;
 
     return Tooltip(
-      message:
-          'device: $deviceName\nuser: $username\nfingerprint: ${_deviceIdentity.fingerprint}',
+      message: l10n.titleBarDeviceTooltip(
+        l10n.deviceLabel,
+        deviceName,
+        l10n.userLabel,
+        username,
+        l10n.fingerprintLabel,
+        _deviceIdentity.fingerprint,
+      ),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
@@ -252,7 +266,7 @@ class _AppShellState extends State<AppShell> with WindowListener {
             ),
             const SizedBox(width: 6),
             Text(
-              '$deviceName/$username#$shortFp',
+              l10n.titleBarDeviceBadge(deviceName, username, shortFp),
               style: AppStyles.textStyleCaption.copyWith(
                 fontSize: 11,
                 color: isDark ? Colors.grey[20] : Colors.grey[130],

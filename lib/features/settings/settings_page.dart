@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 import '../../shared/widgets/components/cards.dart';
 import '../../shared/widgets/components/inputs.dart';
+import '../../l10n/l10n.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -35,7 +36,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return ScaffoldPage(
       header: PageHeader(
         title: Text(
-          '系统设置',
+          context.l10n.settingsPageTitle,
           style: AppStyles.textStyleTitle.copyWith(color: primaryTextColor),
         ),
       ),

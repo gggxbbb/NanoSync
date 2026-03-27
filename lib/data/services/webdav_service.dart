@@ -29,7 +29,10 @@ class WebDAVService {
     return client;
   }
 
-  Future<bool> connect(RemoteConnection connection, {String remotePath = '/'}) async {
+  Future<bool> connect(
+    RemoteConnection connection, {
+    String remotePath = '/',
+  }) async {
     try {
       _client = _createClient(connection, remotePath);
       await _client!.ping();

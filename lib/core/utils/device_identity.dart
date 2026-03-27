@@ -19,8 +19,8 @@ class DeviceIdentityResolver {
   static DeviceIdentity resolve() {
     final env = Platform.environment;
     final deviceName = Platform.localHostname.trim();
-    final username =
-        (env['USERNAME'] ?? env['USER'] ?? env['LOGNAME'] ?? '').trim();
+    final username = (env['USERNAME'] ?? env['USER'] ?? env['LOGNAME'] ?? '')
+        .trim();
 
     final seed = <String>[
       deviceName,

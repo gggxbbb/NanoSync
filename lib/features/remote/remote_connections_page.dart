@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import '../../core/constants/enums.dart';
 import '../../data/models/remote_connection.dart';
 import '../../data/services/remote_connection_manager.dart';
+import '../../l10n/l10n.dart';
 
 class RemoteConnectionsPage extends StatefulWidget {
   const RemoteConnectionsPage({super.key});
@@ -38,13 +39,13 @@ class _RemoteConnectionsPageState extends State<RemoteConnectionsPage> {
   Widget build(BuildContext context) {
     return ScaffoldPage(
       header: PageHeader(
-        title: const Text('Remote Connections'),
+        title: Text(context.l10n.remoteConnectionsPageTitle),
         commandBar: CommandBar(
           mainAxisAlignment: MainAxisAlignment.end,
           primaryItems: [
             CommandBarButton(
               icon: const Icon(FluentIcons.add),
-              label: const Text('New Connection'),
+              label: Text(context.l10n.newConnection),
               onPressed: () => _showAddEditDialog(),
             ),
           ],
@@ -60,12 +61,12 @@ class _RemoteConnectionsPageState extends State<RemoteConnectionsPage> {
                   const Icon(FluentIcons.server, size: 64),
                   const SizedBox(height: 16),
                   Text(
-                    'No remote connections configured',
+                    context.l10n.noRemoteConnectionsConfigured,
                     style: FluentTheme.of(context).typography.subtitle,
                   ),
                   const SizedBox(height: 8),
                   FilledButton(
-                    child: const Text('Add Connection'),
+                    child: Text(context.l10n.addConnection),
                     onPressed: () => _showAddEditDialog(),
                   ),
                 ],
@@ -101,7 +102,7 @@ class _RemoteConnectionsPageState extends State<RemoteConnectionsPage> {
     showDialog(
       context: context,
       builder: (context) => ContentDialog(
-        title: const Text('Testing Connection'),
+        title: Text(context.l10n.testingConnection),
         content: const Center(heightFactor: 2, child: ProgressRing()),
       ),
       barrierDismissible: false,
@@ -116,12 +117,12 @@ class _RemoteConnectionsPageState extends State<RemoteConnectionsPage> {
         context: context,
         builder: (context) => ContentDialog(
           title: Text(
-            result.success ? 'Connection Successful' : 'Connection Failed',
+            result.success ? context.l10n.connectionSuccessful : context.l10n.connectionFailed,
           ),
           content: Text(
             result.success
-                ? 'Successfully connected to ${conn.displayAddress}'
-                : result.error ?? 'Unknown error',
+                ? context.l10n.successfullyConnectedTo(conn.displayAddress)
+                : result.error ?? context.l10n.unknownError,
           ),
           actions: [
             Button(
@@ -153,15 +154,15 @@ class _RemoteConnectionsPageState extends State<RemoteConnectionsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => ContentDialog(
-        title: const Text('Delete Connection'),
-        content: Text('Are you sure you want to delete "${conn.name}"?'),
+        title: Text(context.l10n.deleteConnection),
+        content: Text(context.l10n.deleteConnectionConfirm(conn.name)),
         actions: [
           Button(
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
             onPressed: () => Navigator.pop(context, false),
           ),
           FilledButton(
-            child: const Text('Delete'),
+            child: Text(context.l10n.delete),
             onPressed: () => Navigator.pop(context, true),
           ),
         ],
@@ -224,9 +225,9 @@ class _ConnectionCard extends StatelessWidget {
             ),
             Row(
               children: [
-                Button(child: const Text('Test'), onPressed: onTest),
+                Button(child: Text(context.l10n.test), onPressed: onTest),
                 const SizedBox(width: 8),
-                Button(child: const Text('Edit'), onPressed: onEdit),
+                Button(child: Text(context.l10n.edit), onPressed: onEdit),
                 const SizedBox(width: 8),
                 IconButton(
                   icon: Icon(FluentIcons.delete, color: Colors.red),

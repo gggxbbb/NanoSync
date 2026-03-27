@@ -3,6 +3,7 @@ import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:window_manager/window_manager.dart';
+import 'l10n/app_localizations.dart';
 import 'core/theme/app_theme.dart';
 import 'data/vc_database.dart';
 import 'shared/providers/vc_repository_provider.dart';
@@ -56,6 +57,12 @@ class NanoSyncApp extends StatelessWidget {
     return FluentApp(
       title: 'NanoSync',
       debugShowCheckedModeBanner: false,
+      locale: const Locale('zh', 'CN'),
+      supportedLocales: const [Locale('zh', 'CN')],
+      localizationsDelegates: [
+        ...AppLocalizations.localizationsDelegates,
+        FluentLocalizations.delegate,
+      ],
       themeMode: theme.themeMode,
       theme: AppStyles.lightTheme,
       darkTheme: AppStyles.darkTheme,

@@ -266,7 +266,9 @@ class DatabaseHelper {
 
   // ========== 注册仓库 CRUD ==========
 
-  Future<int> insertRegisteredRepository(Map<String, dynamic> repository) async {
+  Future<int> insertRegisteredRepository(
+    Map<String, dynamic> repository,
+  ) async {
     final db = await database;
     return await db.insert(
       'registered_repositories',
@@ -388,7 +390,9 @@ class DatabaseHelper {
 
   // ========== 仓库远程绑定 CRUD ==========
 
-  Future<int> insertRepositoryRemote(Map<String, dynamic> repositoryRemote) async {
+  Future<int> insertRepositoryRemote(
+    Map<String, dynamic> repositoryRemote,
+  ) async {
     final db = await database;
     return await db.insert(
       'repository_remotes',

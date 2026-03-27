@@ -3,6 +3,7 @@ import '../../data/models/remote_connection.dart';
 import '../../data/services/new_sync_engine.dart';
 import '../../data/services/repository_manager.dart';
 import '../../data/services/remote_connection_manager.dart';
+import '../../l10n/l10n.dart';
 
 class RepositoryListPage extends StatefulWidget {
   const RepositoryListPage({super.key});
@@ -36,11 +37,11 @@ class _RepositoryListPageState extends State<RepositoryListPage> {
         await showDialog(
           context: context,
           builder: (context) => ContentDialog(
-            title: const Text('Error'),
-            content: Text('Failed to load repositories: $e'),
+            title: Text(context.l10n.error),
+            content: Text('${context.l10n.error}: $e'),
             actions: [
               Button(
-                child: const Text('OK'),
+                child: Text(context.l10n.ok),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -64,18 +65,18 @@ class _RepositoryListPageState extends State<RepositoryListPage> {
   Widget build(BuildContext context) {
     return ScaffoldPage(
       header: PageHeader(
-        title: const Text('Repositories'),
+        title: Text(context.l10n.repositoriesPageTitle),
         commandBar: CommandBar(
           mainAxisAlignment: MainAxisAlignment.end,
           primaryItems: [
             CommandBarButton(
               icon: const Icon(FluentIcons.add),
-              label: const Text('Add Repository'),
+              label: Text(context.l10n.addRepository),
               onPressed: () => _showAddRepositoryDialog(),
             ),
             CommandBarButton(
               icon: const Icon(FluentIcons.cloud_download),
-              label: const Text('Clone'),
+              label: Text(context.l10n.clone),
               onPressed: () => _showCloneDialog(),
             ),
           ],
@@ -88,7 +89,7 @@ class _RepositoryListPageState extends State<RepositoryListPage> {
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: TextBox(
-                    placeholder: 'Search repositories...',
+                    placeholder: context.l10n.searchRepositories,
                     prefix: const Padding(
                       padding: EdgeInsets.only(left: 8.0),
                       child: Icon(FluentIcons.search),
@@ -106,8 +107,8 @@ class _RepositoryListPageState extends State<RepositoryListPage> {
                               const SizedBox(height: 16),
                               Text(
                                 _searchQuery.isEmpty
-                                    ? 'No repositories registered'
-                                    : 'No repositories match your search',
+                                    ? context.l10n.noRepositoriesRegistered
+                                    : context.l10n.noRepositoriesMatch,
                                 style: FluentTheme.of(
                                   context,
                                 ).typography.subtitle,
@@ -115,7 +116,7 @@ class _RepositoryListPageState extends State<RepositoryListPage> {
                               const SizedBox(height: 8),
                               if (_searchQuery.isEmpty)
                                 FilledButton(
-                                  child: const Text('Add Repository'),
+                                child: Text(context.l10n.addRepository),
                                   onPressed: () => _showAddRepositoryDialog(),
                                 ),
                             ],
@@ -228,7 +229,7 @@ class _RepositoryCardState extends State<_RepositoryCard> {
                             Padding(
                               padding: const EdgeInsets.only(right: 8.0),
                               child: Tooltip(
-                                message: '$_ahead commits ahead',
+                                message: context.l10n.commitsAhead(_ahead),
                                 child: Row(
                                   children: [
                                     const Icon(FluentIcons.upload, size: 14),
@@ -240,7 +241,7 @@ class _RepositoryCardState extends State<_RepositoryCard> {
                             ),
                           if (_behind > 0)
                             Tooltip(
-                              message: '$_behind commits behind',
+                              message: context.l10n.commitsBehind(_behind),
                               child: Row(
                                 children: [
                                   const Icon(FluentIcons.download, size: 14),
@@ -261,7 +262,7 @@ class _RepositoryCardState extends State<_RepositoryCard> {
               Row(
                 children: [
                   Button(
-                    child: const Text('Fetch'),
+                    child: Text(context.l10n.fetch),
                     onPressed: () async {
                       setState(() => _isLoading = true);
                       try {
@@ -274,7 +275,7 @@ class _RepositoryCardState extends State<_RepositoryCard> {
                     },
                   ),
                   const SizedBox(width: 8),
-                  FilledButton(child: const Text('Sync'), onPressed: _sync),
+                  FilledButton(child: Text(context.l10n.sync), onPressed: _sync),
                 ],
               ),
           ],
@@ -304,7 +305,7 @@ class _AddRepositoryDialogState extends State<_AddRepositoryDialog> {
   @override
   Widget build(BuildContext context) {
     return ContentDialog(
-      title: const Text('Add Repository'),
+      title: Text(context.l10n.addRepositoryDialogTitle),
       constraints: const BoxConstraints(maxWidth: 500),
       content: SingleChildScrollView(
         child: Column(
@@ -312,13 +313,13 @@ class _AddRepositoryDialogState extends State<_AddRepositoryDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             InfoLabel(
-              label: 'Local Path',
+              label: context.l10n.localPath,
               child: Row(
                 children: [
                   Expanded(
                     child: TextBox(
                       controller: _pathController,
-                      placeholder: 'Select folder...',
+                      placeholder: context.l10n.selectFolder,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -333,22 +334,22 @@ class _AddRepositoryDialogState extends State<_AddRepositoryDialog> {
             ),
             const SizedBox(height: 12),
             InfoLabel(
-              label: 'Repository Name',
+              label: context.l10n.repositoryName,
               child: TextBox(
                 controller: _nameController,
-                placeholder: 'Enter name...',
+                placeholder: context.l10n.enterName,
               ),
             ),
             const SizedBox(height: 12),
             Checkbox(
               checked: _initialCommit,
               onChanged: (v) => setState(() => _initialCommit = v ?? true),
-              content: const Text('Create initial commit'),
+              content: Text(context.l10n.createInitialCommit),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Remote Configuration (Optional)',
-              style: TextStyle(fontWeight: FontWeight.bold),
+            Text(
+              context.l10n.remoteConfiguration,
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             FutureBuilder<List<RemoteConnection>>(
@@ -356,11 +357,11 @@ class _AddRepositoryDialogState extends State<_AddRepositoryDialog> {
               builder: (context, snapshot) {
                 final connections = snapshot.data ?? [];
                 return InfoLabel(
-                  label: 'Connection',
+                  label: context.l10n.connection,
                   child: ComboBox<String?>(
                     value: _selectedConnection,
                     isExpanded: true,
-                    placeholder: const Text('Select connection...'),
+                    placeholder: Text(context.l10n.selectConnection),
                     items: connections
                         .map(
                           (c) => ComboBoxItem(
@@ -377,10 +378,10 @@ class _AddRepositoryDialogState extends State<_AddRepositoryDialog> {
             if (_selectedConnection != null) ...[
               const SizedBox(height: 12),
               InfoLabel(
-                label: 'Remote Path',
+                label: context.l10n.remotePath,
                 child: TextBox(
                   controller: _remotePathController,
-                  placeholder: '/path/to/repository',
+                  placeholder: context.l10n.remotePathPlaceholder,
                 ),
               ),
             ],
@@ -389,7 +390,7 @@ class _AddRepositoryDialogState extends State<_AddRepositoryDialog> {
       ),
       actions: [
         Button(
-          child: const Text('Cancel'),
+          child: Text(context.l10n.cancel),
           onPressed: () => Navigator.pop(context),
         ),
         FilledButton(
@@ -399,7 +400,7 @@ class _AddRepositoryDialogState extends State<_AddRepositoryDialog> {
                   height: 16,
                   child: ProgressRing(strokeWidth: 2),
                 )
-              : const Text('Create'),
+              : Text(context.l10n.create),
           onPressed: _isLoading
               ? null
               : () async {
@@ -423,8 +424,8 @@ class _AddRepositoryDialogState extends State<_AddRepositoryDialog> {
                       await showDialog(
                         context: context,
                         builder: (context) => ContentDialog(
-                          title: const Text('Error'),
-                          content: Text('Failed to create repository: $e'),
+                          title: Text(context.l10n.error),
+                          content: Text('${context.l10n.error}: $e'),
                           actions: [
                             Button(
                               child: const Text('OK'),

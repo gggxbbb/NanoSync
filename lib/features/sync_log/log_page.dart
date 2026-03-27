@@ -4,6 +4,7 @@ import '../../data/models/sync_log.dart';
 import '../../data/services/vc_sync_service.dart';
 import '../../shared/widgets/components/indicators.dart';
 import '../../shared/widgets/components/dialogs.dart';
+import '../../l10n/l10n.dart';
 
 class LogPage extends StatefulWidget {
   const LogPage({super.key});
@@ -49,7 +50,7 @@ class _LogPageState extends State<LogPage> {
     return ScaffoldPage(
       header: PageHeader(
         title: Text(
-          '同步日志',
+          context.l10n.syncLogsPageTitle,
           style: AppStyles.textStyleTitle.copyWith(color: primaryTextColor),
         ),
         commandBar: Align(
@@ -59,7 +60,7 @@ class _LogPageState extends State<LogPage> {
               CommandBarButton(
                 icon: const Icon(FluentIcons.refresh),
                 label: Text(
-                  '刷新',
+                  context.l10n.refresh,
                   style: AppStyles.textStyleButton.copyWith(
                     color: primaryTextColor,
                   ),
@@ -69,7 +70,7 @@ class _LogPageState extends State<LogPage> {
               CommandBarButton(
                 icon: const Icon(FluentIcons.delete),
                 label: Text(
-                  '清空',
+                  context.l10n.clearLogs,
                   style: AppStyles.textStyleButton.copyWith(
                     color: primaryTextColor,
                   ),
@@ -85,7 +86,7 @@ class _LogPageState extends State<LogPage> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
             child: TextBox(
-              placeholder: '搜索日志...',
+              placeholder: context.l10n.searchLogs,
               prefix: const Padding(
                 padding: EdgeInsets.only(left: 8),
                 child: Icon(FluentIcons.search, size: 16),

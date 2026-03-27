@@ -1,6 +1,7 @@
 import '../../core/theme/app_theme.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../../core/constants/app_constants.dart';
+import '../../l10n/l10n.dart';
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
@@ -14,7 +15,7 @@ class AboutPage extends StatelessWidget {
     return ScaffoldPage(
       header: PageHeader(
         title: Text(
-          '关于',
+          context.l10n.aboutPageTitle,
           style: AppStyles.textStyleTitle.copyWith(color: primaryTextColor),
         ),
       ),
@@ -103,7 +104,7 @@ class AboutPage extends StatelessWidget {
                             ),
                             const SizedBox(width: 12),
                             Text(
-                              '主要功能',
+                              context.l10n.mainFeatures,
                               style: AppStyles.textStyleSubtitle.copyWith(
                                 color: primaryTextColor,
                               ),
@@ -155,7 +156,7 @@ class AboutPage extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'MIT License',
+                      context.l10n.mitLicense,
                       style: AppStyles.textStyleBody.copyWith(
                         color: isDark ? Colors.grey[100] : Colors.grey[140],
                       ),
@@ -164,7 +165,7 @@ class AboutPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '本软件遵循MIT开源协议',
+                  context.l10n.mitLicenseInfo,
                   style: AppStyles.textStyleCaption.copyWith(
                     fontSize: 12,
                     color: isDark ? Colors.grey[120] : Colors.grey[140],

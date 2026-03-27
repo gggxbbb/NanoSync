@@ -8,6 +8,7 @@ import '../../shared/providers/vc_repository_provider.dart';
 import '../../shared/widgets/components/safe_combo_box.dart';
 import 'widgets/diff_viewer.dart';
 import 'package:flutter/material.dart' show ScaffoldMessenger, SnackBar;
+import '../../l10n/l10n.dart';
 
 class VersionControlPage extends StatefulWidget {
   final String? repositoryId;
@@ -214,7 +215,7 @@ class _VersionControlPageState extends State<VersionControlPage> {
       return ScaffoldPage(
         header: PageHeader(
           title: Text(
-            '版本控制',
+            context.l10n.versionControlPageTitle,
             style: AppStyles.textStyleTitle.copyWith(color: primaryTextColor),
           ),
         ),
@@ -225,14 +226,14 @@ class _VersionControlPageState extends State<VersionControlPage> {
               const Icon(FluentIcons.git_graph, size: 64),
               const SizedBox(height: 16),
               Text(
-                '请先选择一个同步任务',
+                context.l10n.selectSyncTask,
                 style: AppStyles.textStyleBody.copyWith(
                   color: AppStyles.lightTextSecondary(isDark),
                 ),
               ),
               const SizedBox(height: 16),
               Button(
-                child: const Text('初始化版本库'),
+                child: Text(context.l10n.initializeRepository),
                 onPressed: () => _showInitRepoDialog(),
               ),
             ],

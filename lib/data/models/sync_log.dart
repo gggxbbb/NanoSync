@@ -34,9 +34,9 @@ class SyncLog {
     this.sourceDeviceName = '',
     this.sourceUsername = '',
     List<LogEntry>? entries,
-  })  : id = id ?? _generateId(),
-        startTime = startTime ?? DateTime.now(),
-        entries = entries ?? [];
+  }) : id = id ?? _generateId(),
+       startTime = startTime ?? DateTime.now(),
+       entries = entries ?? [];
 
   static String _generateId() {
     return DateTime.now().microsecondsSinceEpoch.toRadixString(36) +
