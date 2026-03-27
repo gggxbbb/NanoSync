@@ -1,0 +1,34 @@
+[package]
+name = "nanosync-tui"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "nanosync-tui"
+path = "src/main.rs"
+
+[dependencies]
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+clap.workspace = true
+ratatui.workspace = true
+crossterm.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+interprocess.workspace = true
+
+nanosync-core.workspace = true
+nanosync-protocol.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["winbase", "namedpipeapi"] }
+
+[dev-dependencies]
+tempfile.workspace = true

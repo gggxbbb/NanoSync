@@ -54,3 +54,5 @@ app.*.map.json
 
 # FVM
 .fvmrc
+
+/target/
