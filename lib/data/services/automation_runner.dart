@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../models/automation_models.dart';
+import 'app_log_service.dart';
 import 'automation_service.dart';
 import 'new_sync_engine.dart';
 import 'repository_manager.dart';
@@ -12,6 +13,7 @@ class AutomationRunner {
   final AutomationService _automationService;
   final RepositoryManager _repositoryManager;
   final NewSyncEngine _syncEngine;
+  final AppLogService _appLog;
 
   Timer? _tickTimer;
   bool _isRunning = false;
@@ -23,9 +25,11 @@ class AutomationRunner {
     AutomationService? automationService,
     RepositoryManager? repositoryManager,
     NewSyncEngine? syncEngine,
+    AppLogService? appLog,
   }) : _automationService = automationService ?? AutomationService.instance,
        _repositoryManager = repositoryManager ?? RepositoryManager.instance,
-       _syncEngine = syncEngine ?? NewSyncEngine.instance;
+       _syncEngine = syncEngine ?? NewSyncEngine.instance,
+       _appLog = appLog ?? AppLogService.instance;
 
   static AutomationRunner get instance {
     _instance ??= AutomationRunner._();
@@ -36,6 +40,12 @@ class AutomationRunner {
     if (_isRunning) {
       return;
     }
+
+    await _appLog.info(
+      category: 'automation',
+      message: 'Automation runner started',
+      source: 'AutomationRunner.start',
+    );
 
     await _automationService.initializeAutomationTables();
     _isRunning = true;
@@ -49,6 +59,13 @@ class AutomationRunner {
     _tickTimer = null;
     _isRunning = false;
     _changeDetectedAt.clear();
+    unawaited(
+      _appLog.info(
+        category: 'automation',
+        message: 'Automation runner stopped',
+        source: 'AutomationRunner.stop',
+      ),
+    );
   }
 
   Future<void> _runTick() async {
@@ -60,11 +77,25 @@ class AutomationRunner {
     try {
       final now = DateTime.now();
       final rules = await _automationService.getAllEnabledRules();
+      await _appLog.debug(
+        category: 'automation',
+        message: 'Automation tick',
+        source: 'AutomationRunner._runTick',
+        context: {'enabledRules': rules.length},
+      );
 
       for (final rule in rules) {
         try {
           await _tryExecuteRule(rule, now);
-        } catch (_) {
+        } catch (e) {
+          await _appLog.error(
+            category: 'automation',
+            message: 'Automation rule execution failed',
+            source: 'AutomationRunner._runTick',
+            repositoryId: rule.repositoryId,
+            details: e.toString(),
+            context: {'ruleId': rule.id, 'ruleName': rule.name},
+          );
           // Isolate each rule execution and keep runner alive.
         }
       }
@@ -74,6 +105,19 @@ class AutomationRunner {
   }
 
   Future<void> _tryExecuteRule(AutomationRule rule, DateTime now) async {
+    await _appLog.debug(
+      category: 'automation',
+      message: 'Evaluate automation rule',
+      source: 'AutomationRunner._tryExecuteRule',
+      repositoryId: rule.repositoryId,
+      context: {
+        'ruleId': rule.id,
+        'name': rule.name,
+        'trigger': rule.triggerType.name,
+        'action': rule.actionType.name,
+      },
+    );
+
     final repo = await _repositoryManager.getRepository(rule.repositoryId);
     if (repo == null) {
       return;
@@ -138,9 +182,24 @@ class AutomationRunner {
     for (var i = 0; i < attempts; i++) {
       try {
         await action();
+        await _appLog.debug(
+          category: 'automation',
+          message: 'Automation action succeeded',
+          source: 'AutomationRunner._runWithRetry',
+          repositoryId: rule.repositoryId,
+          context: {'ruleId': rule.id, 'attempt': i + 1},
+        );
         return true;
       } catch (e) {
         lastError = e;
+        await _appLog.warning(
+          category: 'automation',
+          message: 'Automation action retry',
+          source: 'AutomationRunner._runWithRetry',
+          repositoryId: rule.repositoryId,
+          details: e.toString(),
+          context: {'ruleId': rule.id, 'attempt': i + 1, 'max': attempts},
+        );
         if (i == attempts - 1) {
           break;
         }
@@ -224,6 +283,14 @@ class AutomationRunner {
   }
 
   Future<bool> _autoCommit(AutomationRule rule, Repository repo) async {
+    await _appLog.info(
+      category: 'automation',
+      message: 'Automation auto-commit started',
+      source: 'AutomationRunner._autoCommit',
+      repositoryId: repo.id,
+      context: {'ruleId': rule.id, 'ruleName': rule.name},
+    );
+
     final engine = VcEngine(repositoryId: repo.id);
     final addResult = await engine.add(all: true);
     if (addResult.result == VcOperationResult.nothingToCommit) {
@@ -249,6 +316,14 @@ class AutomationRunner {
     if (!commitResult.isSuccess) {
       throw StateError(commitResult.message);
     }
+
+    await _appLog.info(
+      category: 'automation',
+      message: 'Automation auto-commit completed',
+      source: 'AutomationRunner._autoCommit',
+      repositoryId: repo.id,
+      context: {'ruleId': rule.id, 'message': message},
+    );
 
     return true;
   }

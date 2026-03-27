@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:path/path.dart' as p;
 import 'package:crypto/crypto.dart';
+import 'app_log_service.dart';
 
 /// 二进制增量存储服务
 ///
@@ -10,6 +11,7 @@ import 'package:crypto/crypto.dart';
 class BinaryDeltaService {
   final String storagePath;
   final int deltaThreshold; // 触发增量存储的最小文件大小（字节）
+  final AppLogService _appLog = AppLogService.instance;
 
   /// 默认阈值：1MB，超过此大小的文件考虑增量存储
   static const int defaultDeltaThreshold = 1024 * 1024;
@@ -21,6 +23,12 @@ class BinaryDeltaService {
 
   /// 确保存储目录存在
   Future<void> ensureStorageExists() async {
+    await _appLog.debug(
+      category: 'binary_delta',
+      message: 'Ensure binary delta storage exists',
+      source: 'BinaryDeltaService.ensureStorageExists',
+      context: {'storagePath': storagePath},
+    );
     await Directory(storagePath).create(recursive: true);
     await Directory(p.join(storagePath, 'deltas')).create(recursive: true);
     await Directory(p.join(storagePath, 'objects')).create(recursive: true);
@@ -28,6 +36,13 @@ class BinaryDeltaService {
 
   /// 存储文件的完整副本
   Future<String> storeFullObject(String filePath) async {
+    await _appLog.debug(
+      category: 'binary_delta',
+      message: 'Store full object',
+      source: 'BinaryDeltaService.storeFullObject',
+      context: {'filePath': filePath},
+    );
+
     final file = File(filePath);
     if (!await file.exists()) {
       throw StateError('File not found: $filePath');
@@ -54,6 +69,13 @@ class BinaryDeltaService {
     required String newFilePath,
     required String baseHash,
   }) async {
+    await _appLog.debug(
+      category: 'binary_delta',
+      message: 'Store delta',
+      source: 'BinaryDeltaService.storeDelta',
+      context: {'newFilePath': newFilePath, 'baseHash': baseHash},
+    );
+
     final baseObjectPath = _getObjectPath(baseHash);
 
     if (!await File(baseObjectPath).exists()) {
@@ -121,6 +143,17 @@ class BinaryDeltaService {
     required String baseHash,
     required String targetPath,
   }) async {
+    await _appLog.debug(
+      category: 'binary_delta',
+      message: 'Restore from delta',
+      source: 'BinaryDeltaService.restoreFromDelta',
+      context: {
+        'deltaHash': deltaHash,
+        'baseHash': baseHash,
+        'targetPath': targetPath,
+      },
+    );
+
     final deltaPath = _getDeltaPath(deltaHash);
     final basePath = _getObjectPath(baseHash);
 
@@ -333,6 +366,13 @@ class BinaryDeltaService {
   ///
   /// 清理不再被引用的增量和对象
   Future<int> garbageCollect(Set<String> activeHashes) async {
+    await _appLog.info(
+      category: 'binary_delta',
+      message: 'Binary delta garbage collect started',
+      source: 'BinaryDeltaService.garbageCollect',
+      context: {'activeHashes': activeHashes.length},
+    );
+
     var cleaned = 0;
 
     // 清理对象
@@ -363,11 +403,24 @@ class BinaryDeltaService {
       }
     }
 
+    await _appLog.info(
+      category: 'binary_delta',
+      message: 'Binary delta garbage collect completed',
+      source: 'BinaryDeltaService.garbageCollect',
+      context: {'cleaned': cleaned},
+    );
     return cleaned;
   }
 
   /// 获取存储统计
   Future<StorageStats> getStats() async {
+    await _appLog.debug(
+      category: 'binary_delta',
+      message: 'Read binary delta storage stats',
+      source: 'BinaryDeltaService.getStats',
+      context: {'storagePath': storagePath},
+    );
+
     var objectCount = 0;
     var objectSize = 0;
     var deltaCount = 0;

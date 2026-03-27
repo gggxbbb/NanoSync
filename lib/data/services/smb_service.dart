@@ -3,15 +3,28 @@ import 'package:path/path.dart' as p;
 import 'package:smb_connect/smb_connect.dart';
 import '../models/remote_directory_item.dart';
 import '../models/remote_connection.dart';
+import 'app_log_service.dart';
 
 /// SMB connection and file operation service.
 class SmbService {
   SmbConnect? _client;
+  final AppLogService _appLog = AppLogService.instance;
 
   Future<bool> connect(
     RemoteConnection connection, {
     bool forceReconnect = false,
   }) async {
+    await _appLog.debug(
+      category: 'transport_smb',
+      message: 'SMB connect',
+      source: 'SmbService.connect',
+      context: {
+        'host': connection.host,
+        'port': connection.port,
+        'forceReconnect': forceReconnect,
+      },
+    );
+
     if (!forceReconnect && _client != null) {
       return true;
     }
@@ -49,6 +62,13 @@ class SmbService {
     required String password,
     bool strictCredentialCheck = false,
   }) async {
+    await _appLog.debug(
+      category: 'transport_smb',
+      message: 'SMB test connection',
+      source: 'SmbService.testConnection',
+      context: {'host': host, 'port': port},
+    );
+
     if (port != 445) {
       return (success: false, error: 'SMB 当前仅支持 445 端口');
     }
@@ -83,6 +103,13 @@ class SmbService {
     String localPath,
     String remotePath,
   ) async {
+    await _appLog.debug(
+      category: 'transport_smb',
+      message: 'SMB upload file',
+      source: 'SmbService.uploadFile',
+      context: {'localPath': localPath, 'remotePath': remotePath},
+    );
+
     await _ensureConnected(connection);
 
     final localFile = File(localPath);
@@ -110,6 +137,13 @@ class SmbService {
     String remotePath,
     String localPath,
   ) async {
+    await _appLog.debug(
+      category: 'transport_smb',
+      message: 'SMB download file',
+      source: 'SmbService.downloadFile',
+      context: {'remotePath': remotePath, 'localPath': localPath},
+    );
+
     await _ensureConnected(connection);
 
     final normalizedRemotePath = _requireSharePath(remotePath);
@@ -133,6 +167,13 @@ class SmbService {
     RemoteConnection connection,
     String remotePath,
   ) async {
+    await _appLog.debug(
+      category: 'transport_smb',
+      message: 'SMB delete remote file',
+      source: 'SmbService.deleteRemoteFile',
+      context: {'remotePath': remotePath},
+    );
+
     await _ensureConnected(connection);
 
     final normalizedRemotePath = _requireSharePath(remotePath);

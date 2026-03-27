@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 
 import '../models/sync_log.dart';
 import '../models/vc_repository.dart';
+import 'app_log_service.dart';
 import 'vc_engine.dart';
 import '../vc_database.dart';
 
@@ -25,8 +26,11 @@ class VcSyncService {
   static const String _stateFileName = 'repository_state.json';
 
   final VcDatabase _db;
+  final AppLogService _appLog;
 
-  VcSyncService({VcDatabase? db}) : _db = db ?? VcDatabase.instance;
+  VcSyncService({VcDatabase? db, AppLogService? appLog})
+    : _db = db ?? VcDatabase.instance,
+      _appLog = appLog ?? AppLogService.instance;
 
   String getStateFilePath(String localPath) {
     return p.join(localPath, '.nanosync', _stateFileName);
@@ -59,8 +63,22 @@ class VcSyncService {
   }
 
   Future<bool> exportRepositoryState(String localPath) async {
+    await _appLog.debug(
+      category: 'vc_sync',
+      message: 'Export repository state started',
+      source: 'VcSyncService.exportRepositoryState',
+      context: {'localPath': localPath},
+    );
+
     final repo = await _db.getRepositoryByLocalPath(localPath);
     if (repo == null || !repo.isInitialized) {
+      await _appLog.warning(
+        category: 'vc_sync',
+        message: 'Export repository state skipped',
+        source: 'VcSyncService.exportRepositoryState',
+        details: 'Repository not found or not initialized',
+        context: {'localPath': localPath},
+      );
       return false;
     }
 
@@ -98,10 +116,24 @@ class VcSyncService {
     final stateFile = File(getStateFilePath(localPath));
     await stateFile.parent.create(recursive: true);
     await stateFile.writeAsString(jsonEncode(state));
+    await _appLog.info(
+      category: 'vc_sync',
+      message: 'Export repository state completed',
+      source: 'VcSyncService.exportRepositoryState',
+      repositoryId: repo.id,
+      context: {'commits': commits.length, 'branches': branches.length},
+    );
     return true;
   }
 
   Future<VcStateImportResult> importRepositoryState(String localPath) async {
+    await _appLog.debug(
+      category: 'vc_sync',
+      message: 'Import repository state started',
+      source: 'VcSyncService.importRepositoryState',
+      context: {'localPath': localPath},
+    );
+
     final stateFile = File(getStateFilePath(localPath));
     if (!await stateFile.exists()) {
       return VcStateImportResult(imported: false);
@@ -335,6 +367,20 @@ class VcSyncService {
     String sourceDeviceName = '',
     String sourceUsername = '',
   }) async {
+    await _appLog.debug(
+      category: 'vc_sync',
+      message: 'Record repository sync',
+      source: 'VcSyncService.recordRepositorySync',
+      repositoryId: repositoryId,
+      context: {
+        'operation': syncOperation,
+        'status': status,
+        'totalFiles': totalFiles,
+        'successCount': successCount,
+        'failCount': failCount,
+      },
+    );
+
     final nowIso = DateTime.now().toIso8601String();
     await _db.insertSyncRecord({
       'id': _generateId(),

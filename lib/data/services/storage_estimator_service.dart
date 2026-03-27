@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'app_log_service.dart';
+
 class StorageEstimate {
   final int currentBytes;
   final int estimatedExtraBytes;
@@ -14,8 +16,10 @@ class StorageEstimate {
 
 class StorageEstimatorService {
   static StorageEstimatorService? _instance;
+  final AppLogService _appLog;
 
-  StorageEstimatorService._();
+  StorageEstimatorService._({AppLogService? appLog})
+    : _appLog = appLog ?? AppLogService.instance;
 
   static StorageEstimatorService get instance {
     _instance ??= StorageEstimatorService._();
@@ -28,6 +32,18 @@ class StorageEstimatorService {
     required int maxDays,
     required int maxSizeGB,
   }) async {
+    await _appLog.debug(
+      category: 'storage',
+      message: 'Estimate retention overhead started',
+      source: 'StorageEstimatorService.estimateRetentionOverhead',
+      context: {
+        'rootPath': rootPath,
+        'maxVersions': maxVersions,
+        'maxDays': maxDays,
+        'maxSizeGB': maxSizeGB,
+      },
+    );
+
     final scan = await _scanDirectory(rootPath);
 
     final textRatio = scan.fileCount == 0
@@ -58,11 +74,24 @@ class StorageEstimatorService {
     final capBytes = maxSizeGB * 1024 * 1024 * 1024;
     final capped = estimated.clamp(0, capBytes);
 
-    return StorageEstimate(
+    final result = StorageEstimate(
       currentBytes: scan.totalBytes,
       estimatedExtraBytes: capped,
       changeRate: changeRate,
     );
+
+    await _appLog.debug(
+      category: 'storage',
+      message: 'Estimate retention overhead completed',
+      source: 'StorageEstimatorService.estimateRetentionOverhead',
+      context: {
+        'currentBytes': result.currentBytes,
+        'estimatedExtraBytes': result.estimatedExtraBytes,
+        'changeRate': result.changeRate,
+      },
+    );
+
+    return result;
   }
 
   Future<_ScanStats> _scanDirectory(String rootPath) async {

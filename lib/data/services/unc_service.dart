@@ -1,15 +1,25 @@
 import 'dart:io';
 import '../models/remote_connection.dart';
+import 'app_log_service.dart';
 
 /// UNC (Universal Naming Convention) 文件操作服务
 /// Windows UNC 路径格式: \\server\share\path
 /// 该服务直接使用 Dart IO 操作 UNC 路径，无需额外认证（使用 Windows 当前用户凭据）
 class UncService {
+  final AppLogService _appLog = AppLogService.instance;
+
   /// 测试 UNC 连接
   /// 检查指定的 UNC 路径是否可访问
   Future<({bool success, String? error})> testConnection({
     required String uncPath,
   }) async {
+    await _appLog.debug(
+      category: 'transport_unc',
+      message: 'UNC test connection',
+      source: 'UncService.testConnection',
+      context: {'uncPath': uncPath},
+    );
+
     try {
       // 标准化 UNC 路径
       final normalizedPath = _normalizeUncPath(uncPath);
@@ -54,6 +64,13 @@ class UncService {
     String localPath,
     String remotePath,
   ) async {
+    await _appLog.debug(
+      category: 'transport_unc',
+      message: 'UNC upload file',
+      source: 'UncService.uploadFile',
+      context: {'localPath': localPath, 'remotePath': remotePath},
+    );
+
     final localFile = File(localPath);
     if (!await localFile.exists()) {
       throw Exception('本地文件不存在: $localPath');
@@ -77,6 +94,13 @@ class UncService {
     String remotePath,
     String localPath,
   ) async {
+    await _appLog.debug(
+      category: 'transport_unc',
+      message: 'UNC download file',
+      source: 'UncService.downloadFile',
+      context: {'remotePath': remotePath, 'localPath': localPath},
+    );
+
     // 构建完整的 UNC 路径
     final uncBase = _normalizeUncPath(connection.host);
     final fullRemotePath = _joinUncPath(uncBase, remotePath);
@@ -99,6 +123,13 @@ class UncService {
     RemoteConnection connection,
     String remotePath,
   ) async {
+    await _appLog.debug(
+      category: 'transport_unc',
+      message: 'UNC delete remote file',
+      source: 'UncService.deleteRemoteFile',
+      context: {'remotePath': remotePath},
+    );
+
     // 构建完整的 UNC 路径
     final uncBase = _normalizeUncPath(connection.host);
     final fullRemotePath = _joinUncPath(uncBase, remotePath);

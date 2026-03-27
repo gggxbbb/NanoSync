@@ -1,13 +1,16 @@
 import 'package:sqflite/sqflite.dart';
 import '../database/database_helper.dart';
 import '../models/automation_models.dart';
+import 'app_log_service.dart';
 
 class AutomationService {
   static AutomationService? _instance;
   final DatabaseHelper _db;
+  final AppLogService _appLog;
 
-  AutomationService._({DatabaseHelper? db})
-    : _db = db ?? DatabaseHelper.instance;
+  AutomationService._({DatabaseHelper? db, AppLogService? appLog})
+    : _db = db ?? DatabaseHelper.instance,
+      _appLog = appLog ?? AppLogService.instance;
 
   static AutomationService get instance {
     _instance ??= AutomationService._();
@@ -16,6 +19,11 @@ class AutomationService {
 
   /// Initialize automation tables in database
   Future<void> initializeAutomationTables() async {
+    await _appLog.debug(
+      category: 'automation',
+      message: 'Initialize automation tables',
+      source: 'AutomationService.initializeAutomationTables',
+    );
     final db = await _db.database;
     await db.execute('''
       CREATE TABLE IF NOT EXISTS automation_rules (
@@ -70,6 +78,14 @@ class AutomationService {
 
   /// Create or update an automation rule
   Future<AutomationRule> saveAutomationRule(AutomationRule rule) async {
+    await _appLog.info(
+      category: 'automation',
+      message: 'Save automation rule',
+      source: 'AutomationService.saveAutomationRule',
+      repositoryId: rule.repositoryId,
+      context: {'ruleId': rule.id, 'name': rule.name, 'enabled': rule.enabled},
+    );
+
     final db = await _db.database;
     final data = rule.toMap();
 
@@ -114,6 +130,13 @@ class AutomationService {
 
   /// Delete an automation rule
   Future<void> deleteAutomationRule(String id) async {
+    await _appLog.warning(
+      category: 'automation',
+      message: 'Delete automation rule',
+      source: 'AutomationService.deleteAutomationRule',
+      context: {'ruleId': id},
+    );
+
     final db = await _db.database;
     await db.delete('automation_rules', where: 'id = ?', whereArgs: [id]);
   }
@@ -134,6 +157,13 @@ class AutomationService {
 
   /// Enable or disable an automation rule
   Future<void> setAutomationRuleEnabled(String id, bool enabled) async {
+    await _appLog.info(
+      category: 'automation',
+      message: 'Set automation rule enabled',
+      source: 'AutomationService.setAutomationRuleEnabled',
+      context: {'ruleId': id, 'enabled': enabled},
+    );
+
     final db = await _db.database;
     await db.update(
       'automation_rules',

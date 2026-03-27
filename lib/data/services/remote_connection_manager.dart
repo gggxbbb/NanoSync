@@ -4,6 +4,7 @@ import '../database/database_helper.dart';
 import '../models/remote_directory_item.dart';
 import '../models/remote_connection.dart';
 import '../../core/constants/enums.dart';
+import 'app_log_service.dart';
 import 'smb_service.dart';
 import 'unc_service.dart';
 import 'webdav_service.dart';
@@ -21,16 +22,19 @@ class RemoteConnectionManager {
   final SmbService _smb;
   final UncService _unc;
   final WebDAVService _webdav;
+  final AppLogService _appLog;
 
   RemoteConnectionManager._({
     DatabaseHelper? db,
     SmbService? smb,
     UncService? unc,
     WebDAVService? webdav,
+    AppLogService? appLog,
   }) : _db = db ?? DatabaseHelper.instance,
        _smb = smb ?? SmbService(),
        _unc = unc ?? UncService(),
-       _webdav = webdav ?? WebDAVService();
+       _webdav = webdav ?? WebDAVService(),
+       _appLog = appLog ?? AppLogService.instance;
 
   static RemoteConnectionManager get instance {
     _instance ??= RemoteConnectionManager._();
@@ -38,6 +42,18 @@ class RemoteConnectionManager {
   }
 
   Future<RemoteConnection> addConnection(RemoteConnection connection) async {
+    await _appLog.info(
+      category: 'remote',
+      message: 'Add remote connection',
+      source: 'RemoteConnectionManager.addConnection',
+      context: {
+        'name': connection.name,
+        'protocol': connection.protocol.value,
+        'host': connection.host,
+        'port': connection.port,
+      },
+    );
+
     final existing = await _db.getRemoteConnectionByName(connection.name);
     if (existing != null) {
       throw Exception(
@@ -50,6 +66,13 @@ class RemoteConnectionManager {
   }
 
   Future<void> updateConnection(RemoteConnection connection) async {
+    await _appLog.info(
+      category: 'remote',
+      message: 'Update remote connection',
+      source: 'RemoteConnectionManager.updateConnection',
+      context: {'id': connection.id, 'name': connection.name},
+    );
+
     final existing = await _db.getRemoteConnection(connection.id);
     if (existing == null) {
       throw Exception('Connection not found');
@@ -66,6 +89,12 @@ class RemoteConnectionManager {
   }
 
   Future<void> removeConnection(String connectionId) async {
+    await _appLog.warning(
+      category: 'remote',
+      message: 'Remove remote connection',
+      source: 'RemoteConnectionManager.removeConnection',
+      context: {'id': connectionId},
+    );
     await _db.deleteRemoteConnection(connectionId);
   }
 
@@ -105,6 +134,18 @@ class RemoteConnectionManager {
   Future<ConnectionTestResult> _testConnectionInternal(
     RemoteConnection conn,
   ) async {
+    await _appLog.debug(
+      category: 'remote',
+      message: 'Test remote connection',
+      source: 'RemoteConnectionManager._testConnectionInternal',
+      context: {
+        'name': conn.name,
+        'protocol': conn.protocol.value,
+        'host': conn.host,
+        'port': conn.port,
+      },
+    );
+
     try {
       if (conn.protocol.value == 'smb') {
         final result = await _smb.testConnection(
@@ -137,6 +178,13 @@ class RemoteConnectionManager {
         );
       }
     } catch (e) {
+      await _appLog.error(
+        category: 'remote',
+        message: 'Test remote connection failed',
+        source: 'RemoteConnectionManager._testConnectionInternal',
+        details: e.toString(),
+        context: {'name': conn.name, 'protocol': conn.protocol.value},
+      );
       return ConnectionTestResult(success: false, error: e.toString());
     }
   }
@@ -147,6 +195,18 @@ class RemoteConnectionManager {
     required String remotePath,
     bool isDefault = false,
   }) async {
+    await _appLog.info(
+      category: 'remote',
+      message: 'Bind remote to repository',
+      source: 'RemoteConnectionManager.bindToRepository',
+      repositoryId: repositoryId,
+      context: {
+        'connectionName': connectionName,
+        'remotePath': remotePath,
+        'isDefault': isDefault,
+      },
+    );
+
     final conn = await _db.getRemoteConnectionByName(connectionName);
     if (conn == null) {
       throw Exception('Connection not found: $connectionName');
@@ -161,6 +221,10 @@ class RemoteConnectionManager {
         'remote_path': remotePath,
         'is_default': isDefault ? 1 : 0,
       });
+      if (isDefault) {
+        // Keep default remote unique within a repository.
+        await _db.setDefaultRepositoryRemote(repositoryId, connectionName);
+      }
       return;
     }
 
@@ -182,6 +246,14 @@ class RemoteConnectionManager {
     required String repositoryId,
     required String connectionName,
   }) async {
+    await _appLog.warning(
+      category: 'remote',
+      message: 'Unbind remote from repository',
+      source: 'RemoteConnectionManager.unbindFromRepository',
+      repositoryId: repositoryId,
+      context: {'connectionName': connectionName},
+    );
+
     final repoRemote = await _db.getRepositoryRemoteByName(
       repositoryId,
       connectionName,
@@ -195,6 +267,13 @@ class RemoteConnectionManager {
     required String repositoryId,
     required String connectionName,
   }) async {
+    await _appLog.info(
+      category: 'remote',
+      message: 'Set default remote',
+      source: 'RemoteConnectionManager.setDefaultRemote',
+      repositoryId: repositoryId,
+      context: {'connectionName': connectionName},
+    );
     await _db.setDefaultRepositoryRemote(repositoryId, connectionName);
   }
 
@@ -236,6 +315,13 @@ class RemoteConnectionManager {
     required String connectionName,
     required String remotePath,
   }) async {
+    await _appLog.debug(
+      category: 'remote',
+      message: 'List remote directories',
+      source: 'RemoteConnectionManager.listRemoteDirectories',
+      context: {'connectionName': connectionName, 'remotePath': remotePath},
+    );
+
     final connection = await getConnectionByName(connectionName);
     if (connection == null) {
       throw Exception('Connection not found: $connectionName');
@@ -278,6 +364,13 @@ class RemoteConnectionManager {
     required String connectionName,
     required String remotePath,
   }) async {
+    await _appLog.info(
+      category: 'remote',
+      message: 'Create remote directory',
+      source: 'RemoteConnectionManager.createRemoteDirectory',
+      context: {'connectionName': connectionName, 'remotePath': remotePath},
+    );
+
     final connection = await getConnectionByName(connectionName);
     if (connection == null) {
       throw Exception('Connection not found: $connectionName');

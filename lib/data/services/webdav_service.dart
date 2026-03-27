@@ -3,10 +3,12 @@ import 'package:path/path.dart' as p;
 import 'package:webdav_client_plus/webdav_client_plus.dart';
 import '../models/remote_directory_item.dart';
 import '../models/remote_connection.dart';
+import 'app_log_service.dart';
 
 /// WebDAV连接与文件操作服务
 class WebDAVService {
   WebdavClient? _client;
+  final AppLogService _appLog = AppLogService.instance;
 
   WebdavClient _createClient(RemoteConnection connection, String remotePath) {
     final port = connection.port == 0 ? 443 : connection.port;
@@ -34,6 +36,17 @@ class WebDAVService {
     RemoteConnection connection, {
     String remotePath = '/',
   }) async {
+    await _appLog.debug(
+      category: 'transport_webdav',
+      message: 'WebDAV connect',
+      source: 'WebDAVService.connect',
+      context: {
+        'host': connection.host,
+        'port': connection.port,
+        'remotePath': remotePath,
+      },
+    );
+
     try {
       _client = _createClient(connection, remotePath);
       await _client!.ping();
@@ -53,6 +66,17 @@ class WebDAVService {
     RemoteConnection connection, {
     String probePath = '/',
   }) async {
+    await _appLog.debug(
+      category: 'transport_webdav',
+      message: 'WebDAV test connection',
+      source: 'WebDAVService.testConnection',
+      context: {
+        'host': connection.host,
+        'port': connection.port,
+        'probePath': probePath,
+      },
+    );
+
     try {
       final normalizedProbePath = _normalizePath(probePath);
       final client = _createClient(connection, normalizedProbePath);
@@ -102,6 +126,13 @@ class WebDAVService {
     String localPath,
     String remotePath,
   ) async {
+    await _appLog.debug(
+      category: 'transport_webdav',
+      message: 'WebDAV upload file',
+      source: 'WebDAVService.uploadFile',
+      context: {'localPath': localPath, 'remotePath': remotePath},
+    );
+
     if (_client == null) {
       final connected = await connect(connection);
       if (!connected) throw Exception('无法连接到WebDAV服务器');
@@ -130,6 +161,13 @@ class WebDAVService {
     String remotePath,
     String localPath,
   ) async {
+    await _appLog.debug(
+      category: 'transport_webdav',
+      message: 'WebDAV download file',
+      source: 'WebDAVService.downloadFile',
+      context: {'remotePath': remotePath, 'localPath': localPath},
+    );
+
     if (_client == null) {
       final connected = await connect(connection);
       if (!connected) throw Exception('无法连接到WebDAV服务器');
@@ -147,6 +185,13 @@ class WebDAVService {
   }
 
   Future<void> deleteRemoteFile(String remotePath) async {
+    await _appLog.debug(
+      category: 'transport_webdav',
+      message: 'WebDAV delete remote file',
+      source: 'WebDAVService.deleteRemoteFile',
+      context: {'remotePath': remotePath},
+    );
+
     if (_client == null) throw Exception('未连接到WebDAV服务器');
     await _client!.remove(remotePath);
   }
@@ -169,6 +214,13 @@ class WebDAVService {
     RemoteConnection connection, {
     String remotePath = '/',
   }) async {
+    await _appLog.debug(
+      category: 'transport_webdav',
+      message: 'WebDAV list directories',
+      source: 'WebDAVService.listDirectories',
+      context: {'remotePath': remotePath},
+    );
+
     final client = _createClient(connection, '/');
     final normalizedPath = _normalizePath(remotePath);
     final entries = await client.readDir(normalizedPath);

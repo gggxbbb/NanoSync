@@ -5,6 +5,7 @@ import '../models/history_config.dart';
 import '../models/sync_result.dart';
 import '../models/vc_models.dart';
 import '../vc_database.dart';
+import 'app_log_service.dart';
 import 'repository_manager.dart';
 import 'repository_local_settings_service.dart';
 
@@ -13,15 +14,18 @@ class HistoryCleaner {
   final VcDatabase _vcDb;
   final RepositoryManager _repoManager;
   final RepositoryLocalSettingsService _localSettings;
+  final AppLogService _appLog;
 
   HistoryCleaner._({
     VcDatabase? vcDb,
     RepositoryManager? repoManager,
     RepositoryLocalSettingsService? localSettings,
+    AppLogService? appLog,
   }) : _vcDb = vcDb ?? VcDatabase.instance,
        _repoManager = repoManager ?? RepositoryManager.instance,
        _localSettings =
-           localSettings ?? RepositoryLocalSettingsService.instance;
+           localSettings ?? RepositoryLocalSettingsService.instance,
+       _appLog = appLog ?? AppLogService.instance;
 
   static HistoryCleaner get instance {
     _instance ??= HistoryCleaner._();
@@ -72,6 +76,13 @@ class HistoryCleaner {
   }
 
   Future<CleanupResult> cleanup(Repository repo) async {
+    await _appLog.info(
+      category: 'history',
+      message: 'History cleanup started',
+      source: 'HistoryCleaner.cleanup',
+      repositoryId: repo.id,
+    );
+
     try {
       final config = repo.config;
       if (config == null) {
@@ -87,6 +98,17 @@ class HistoryCleaner {
 
       final stats = await calculateStats(repo);
       if (!needsCleanup(effectiveHistory, stats)) {
+        await _appLog.debug(
+          category: 'history',
+          message: 'History cleanup skipped',
+          source: 'HistoryCleaner.cleanup',
+          repositoryId: repo.id,
+          context: {
+            'commitCount': stats.commitCount,
+            'oldestDays': stats.oldestCommitAge,
+            'sizeMb': stats.objectsSizeMb,
+          },
+        );
         return const CleanupResult(success: true);
       }
 
@@ -122,6 +144,17 @@ class HistoryCleaner {
         referencedHashes,
       );
 
+      await _appLog.info(
+        category: 'history',
+        message: 'History cleanup completed',
+        source: 'HistoryCleaner.cleanup',
+        repositoryId: repo.id,
+        context: {
+          'deletedCommits': deletedCommits,
+          'deletedObjects': deletedObjects,
+        },
+      );
+
       return CleanupResult(
         deletedCommits: deletedCommits,
         deletedObjects: deletedObjects,
@@ -129,6 +162,13 @@ class HistoryCleaner {
         success: true,
       );
     } catch (e) {
+      await _appLog.error(
+        category: 'history',
+        message: 'History cleanup failed',
+        source: 'HistoryCleaner.cleanup',
+        repositoryId: repo.id,
+        details: e.toString(),
+      );
       return CleanupResult(error: e.toString());
     }
   }

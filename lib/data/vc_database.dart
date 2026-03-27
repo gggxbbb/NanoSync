@@ -30,7 +30,7 @@ class VcDatabase {
     return await databaseFactoryFfi.openDatabase(
       dbPath,
       options: OpenDatabaseOptions(
-        version: 3,
+        version: 4,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
       ),
@@ -221,6 +221,7 @@ class VcDatabase {
     ''');
 
     await _createRemoteAndSyncTables(db);
+    await _createAppLogTable(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -231,6 +232,9 @@ class VcDatabase {
       await db.execute('DROP INDEX IF EXISTS idx_sync_records_repo');
       await db.execute('DROP TABLE IF EXISTS vc_sync_records');
       await _createRemoteAndSyncTables(db);
+    }
+    if (oldVersion < 4) {
+      await _createAppLogTable(db);
     }
   }
 
@@ -296,6 +300,36 @@ class VcDatabase {
 
     await db.execute('''
       CREATE INDEX IF NOT EXISTS idx_sync_records_repo ON vc_sync_records(repository_id, created_at DESC)
+    ''');
+  }
+
+  Future<void> _createAppLogTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS vc_app_logs (
+        id TEXT PRIMARY KEY,
+        created_at TEXT NOT NULL,
+        level TEXT NOT NULL,
+        category TEXT NOT NULL,
+        message TEXT NOT NULL,
+        details TEXT NOT NULL DEFAULT '',
+        repository_id TEXT NOT NULL DEFAULT '',
+        operation TEXT NOT NULL DEFAULT '',
+        source TEXT NOT NULL DEFAULT '',
+        stack_trace TEXT NOT NULL DEFAULT '',
+        context_json TEXT NOT NULL DEFAULT '{}'
+      )
+    ''');
+
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_app_logs_created_at ON vc_app_logs(created_at DESC)
+    ''');
+
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_app_logs_level ON vc_app_logs(level, created_at DESC)
+    ''');
+
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_app_logs_repo ON vc_app_logs(repository_id, created_at DESC)
     ''');
   }
 
@@ -694,5 +728,54 @@ class VcDatabase {
   Future<int> clearAllSyncRecords() async {
     final db = await database;
     return await db.delete('vc_sync_records');
+  }
+
+  Future<int> insertAppLog(Map<String, dynamic> log) async {
+    final db = await database;
+    return await db.insert(
+      'vc_app_logs',
+      log,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getAppLogs({
+    int limit = 500,
+    String? minLevel,
+    String repositoryId = '',
+  }) async {
+    final db = await database;
+    final levels = <String>['debug', 'info', 'warning', 'error'];
+    final minIndex = minLevel == null ? 0 : levels.indexOf(minLevel);
+
+    final whereParts = <String>[];
+    final whereArgs = <Object?>[];
+
+    if (minIndex > 0) {
+      final accepted = levels.sublist(minIndex);
+      whereParts.add(
+        'level IN (${List.filled(accepted.length, '?').join(', ')})',
+      );
+      whereArgs.addAll(accepted);
+    }
+
+    if (repositoryId.isNotEmpty) {
+      whereParts.add('repository_id = ?');
+      whereArgs.add(repositoryId);
+    }
+
+    final where = whereParts.isEmpty ? null : whereParts.join(' AND ');
+    return await db.query(
+      'vc_app_logs',
+      where: where,
+      whereArgs: whereArgs,
+      orderBy: 'created_at DESC',
+      limit: limit,
+    );
+  }
+
+  Future<int> clearAllAppLogs() async {
+    final db = await database;
+    return await db.delete('vc_app_logs');
   }
 }
