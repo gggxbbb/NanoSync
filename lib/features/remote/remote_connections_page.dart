@@ -138,7 +138,7 @@ class _RemoteConnectionsPageState extends State<RemoteConnectionsPage> {
           ),
           actions: [
             Button(
-              child: const Text('OK'),
+              child: Text(context.l10n.ok),
               onPressed: () => Navigator.pop(context),
             ),
           ],
@@ -149,11 +149,11 @@ class _RemoteConnectionsPageState extends State<RemoteConnectionsPage> {
       await showDialog(
         context: context,
         builder: (context) => ContentDialog(
-          title: const Text('Error'),
+          title: Text(context.l10n.error),
           content: Text(e.toString()),
           actions: [
             Button(
-              child: const Text('OK'),
+              child: Text(context.l10n.ok),
               onPressed: () => Navigator.pop(context),
             ),
           ],
@@ -239,7 +239,7 @@ class _ConnectionCard extends StatelessWidget {
                   if (connection.username.isNotEmpty &&
                       connection.protocol != RemoteProtocol.unc)
                     Text(
-                      'User: ${connection.username}',
+                      '${context.l10n.user}: ${connection.username}',
                       style: AppStyles.textStyleCaption.copyWith(
                         color: AppStyles.lightTextSecondary(isDark),
                       ),
@@ -310,7 +310,11 @@ class _AddEditConnectionDialogState extends State<_AddEditConnectionDialog> {
   @override
   Widget build(BuildContext context) {
     return ContentDialog(
-      title: Text(_isEditing ? 'Edit Connection' : 'New Connection'),
+      title: Text(
+        _isEditing
+            ? context.l10n.editConnection
+            : context.l10n.newConnectionDialog,
+      ),
       constraints: const BoxConstraints(maxWidth: 450),
       content: SingleChildScrollView(
         child: Column(
@@ -318,27 +322,30 @@ class _AddEditConnectionDialogState extends State<_AddEditConnectionDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             InfoLabel(
-              label: 'Name',
+              label: context.l10n.name,
               child: TextBox(
                 controller: _nameController,
-                placeholder: 'e.g., nas-backup',
+                placeholder: context.l10n.nameExample,
               ),
             ),
             const SizedBox(height: 12),
             InfoLabel(
-              label: 'Protocol',
+              label: context.l10n.protocol,
               child: SafeComboBox<RemoteProtocol>(
                 value: _protocol,
                 isExpanded: true,
-                items: const [
-                  ComboBoxItem(value: RemoteProtocol.smb, child: Text('SMB')),
+                items: [
+                  ComboBoxItem(
+                    value: RemoteProtocol.smb,
+                    child: Text(context.l10n.smb),
+                  ),
                   ComboBoxItem(
                     value: RemoteProtocol.webdav,
-                    child: Text('WebDAV'),
+                    child: Text(context.l10n.webdav),
                   ),
                   ComboBoxItem(
                     value: RemoteProtocol.unc,
-                    child: Text('Windows UNC'),
+                    child: Text(context.l10n.windowsUnc),
                   ),
                 ],
                 onChanged: (v) {
@@ -360,18 +367,20 @@ class _AddEditConnectionDialogState extends State<_AddEditConnectionDialog> {
             ),
             const SizedBox(height: 12),
             InfoLabel(
-              label: _protocol == RemoteProtocol.unc ? 'UNC Path' : 'Host',
+              label: _protocol == RemoteProtocol.unc
+                  ? context.l10n.uncPath
+                  : context.l10n.host,
               child: TextBox(
                 controller: _hostController,
                 placeholder: _protocol == RemoteProtocol.unc
-                    ? r'e.g., \\server\share'
-                    : 'e.g., 192.168.1.100',
+                    ? context.l10n.uncPathExample
+                    : context.l10n.hostExample,
               ),
             ),
             if (_showPortField) ...[
               const SizedBox(height: 12),
               InfoLabel(
-                label: 'Port',
+                label: context.l10n.port,
                 child: TextBox(
                   controller: _portController,
                   placeholder: _protocol == RemoteProtocol.smb ? '445' : '443',
@@ -382,15 +391,15 @@ class _AddEditConnectionDialogState extends State<_AddEditConnectionDialog> {
             if (_protocol != RemoteProtocol.unc) ...[
               const SizedBox(height: 12),
               InfoLabel(
-                label: 'Username (optional)',
+                label: context.l10n.username,
                 child: TextBox(
                   controller: _usernameController,
-                  placeholder: 'Leave empty for guest access',
+                  placeholder: context.l10n.usernameExample,
                 ),
               ),
               const SizedBox(height: 12),
               InfoLabel(
-                label: 'Password (optional)',
+                label: context.l10n.password,
                 child: PasswordBox(
                   controller: _passwordController,
                   revealMode: _obscurePassword
@@ -404,7 +413,7 @@ class _AddEditConnectionDialogState extends State<_AddEditConnectionDialog> {
       ),
       actions: [
         Button(
-          child: const Text('Cancel'),
+          child: Text(context.l10n.cancel),
           onPressed: () => Navigator.pop(context),
         ),
         FilledButton(
@@ -414,7 +423,7 @@ class _AddEditConnectionDialogState extends State<_AddEditConnectionDialog> {
                   height: 16,
                   child: ProgressRing(strokeWidth: 2),
                 )
-              : Text(_isEditing ? 'Save' : 'Create'),
+              : Text(_isEditing ? context.l10n.save : context.l10n.create),
           onPressed: _isLoading ? null : _save,
         ),
       ],
@@ -430,11 +439,11 @@ class _AddEditConnectionDialogState extends State<_AddEditConnectionDialog> {
       await showDialog(
         context: context,
         builder: (context) => ContentDialog(
-          title: const Text('Validation Error'),
-          content: const Text('Name is required'),
+          title: Text(context.l10n.validationError),
+          content: Text(context.l10n.nameRequired),
           actions: [
             Button(
-              child: const Text('OK'),
+              child: Text(context.l10n.ok),
               onPressed: () => Navigator.pop(context),
             ),
           ],
@@ -447,11 +456,11 @@ class _AddEditConnectionDialogState extends State<_AddEditConnectionDialog> {
       await showDialog(
         context: context,
         builder: (context) => ContentDialog(
-          title: const Text('Validation Error'),
-          content: const Text('Host is required'),
+          title: Text(context.l10n.validationError),
+          content: Text(context.l10n.hostRequired),
           actions: [
             Button(
-              child: const Text('OK'),
+              child: Text(context.l10n.ok),
               onPressed: () => Navigator.pop(context),
             ),
           ],
@@ -486,11 +495,11 @@ class _AddEditConnectionDialogState extends State<_AddEditConnectionDialog> {
         await showDialog(
           context: context,
           builder: (context) => ContentDialog(
-            title: const Text('Error'),
+            title: Text(context.l10n.error),
             content: Text(e.toString()),
             actions: [
               Button(
-                child: const Text('OK'),
+                child: Text(context.l10n.ok),
                 onPressed: () => Navigator.pop(context),
               ),
             ],

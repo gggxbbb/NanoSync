@@ -329,5 +329,9 @@
   "samePathError": "新路径与当前路径相同",
   "migrateFailed": "迁移失败",
   "deleteNanosyncFolder": "同时删除 .nanosync 版本控制文件夹",
-  "deleteNanosyncFolderHint": "将永久删除仓库的所有版本历史记录，此操作不可恢复！"
+  "deleteNanosyncFolderHint": "将永久删除仓库的所有版本历史记录，此操作不可恢复！",
+  "windowsUnc": "Windows UNC",
+  "uncPath": "UNC 路径",
+  "uncPathExample": "例如：\\\\server\\share",
+  "user": "用户"
 }

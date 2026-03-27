@@ -1550,6 +1550,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'将永久删除仓库的所有版本历史记录，此操作不可恢复！'**
   String get deleteNanosyncFolderHint;
+
+  /// No description provided for @windowsUnc.
+  ///
+  /// In zh, this message translates to:
+  /// **'Windows UNC'**
+  String get windowsUnc;
+
+  /// No description provided for @uncPath.
+  ///
+  /// In zh, this message translates to:
+  /// **'UNC 路径'**
+  String get uncPath;
+
+  /// No description provided for @uncPathExample.
+  ///
+  /// In zh, this message translates to:
+  /// **'例如：\\\\server\\share'**
+  String get uncPathExample;
+
+  /// No description provided for @user.
+  ///
+  /// In zh, this message translates to:
+  /// **'用户'**
+  String get user;
 }
 
 class _AppLocalizationsDelegate

@@ -774,4 +774,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get deleteNanosyncFolderHint => '将永久删除仓库的所有版本历史记录，此操作不可恢复！';
+
+  @override
+  String get windowsUnc => 'Windows UNC';
+
+  @override
+  String get uncPath => 'UNC 路径';
+
+  @override
+  String get uncPathExample => '例如：\\\\server\\share';
+
+  @override
+  String get user => '用户';
 }
