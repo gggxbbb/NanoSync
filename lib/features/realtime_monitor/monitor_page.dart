@@ -2,7 +2,6 @@ import '../../core/theme/app_theme.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:provider/provider.dart';
 import '../../shared/providers/task_provider.dart';
-import '../../core/theme/app_theme.dart' show AppStyles, ThemeManager;
 import '../../shared/widgets/components/cards.dart';
 import '../../shared/widgets/components/indicators.dart';
 
@@ -14,9 +13,15 @@ class MonitorPage extends StatelessWidget {
     return Consumer<TaskProvider>(
       builder: (context, provider, _) {
         final isDark = FluentTheme.of(context).brightness == Brightness.dark;
+        final primaryTextColor = isDark ? Colors.white : Colors.black;
 
         return ScaffoldPage(
-          header: const PageHeader(title: Text('实时监控')),
+          header: PageHeader(
+            title: Text(
+              '实时监控',
+              style: AppStyles.textStyleTitle.copyWith(color: primaryTextColor),
+            ),
+          ),
           content: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -61,7 +66,12 @@ class MonitorPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppStyles.borderColor(isDark)),
       ),
-      child: const Text('暂无同步记录'),
+      child: Text(
+        '暂无同步记录',
+        style: AppStyles.textStyleBody.copyWith(
+          color: isDark ? Colors.white : Colors.black,
+        ),
+      ),
     );
   }
 
@@ -144,12 +154,18 @@ class MonitorPage extends StatelessWidget {
               Expanded(
                 child: Text(
                   task.name,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: AppStyles.textStyleBody.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
                 ),
               ),
               Text(
                 '${(task.syncProgress * 100).toStringAsFixed(0)}%',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: AppStyles.textStyleBody.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
               ),
             ],
           ),
@@ -158,8 +174,7 @@ class MonitorPage extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             '${task.localPath} → ${task.remoteHost}:${task.remotePath}',
-            style: TextStyle(
-              fontSize: 12,
+            style: AppStyles.textStyleCaption.copyWith(
               color: isDark ? Colors.grey[100] : Colors.grey[140],
             ),
           ),

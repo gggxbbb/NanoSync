@@ -3,21 +3,23 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import '../models/sync_task.dart';
 import '../models/file_snapshot.dart';
-import '../models/file_version.dart';
 import '../models/sync_log.dart';
 import '../database/database_helper.dart';
 import '../../core/constants/enums.dart';
-import '../../core/constants/app_constants.dart';
 import 'file_scanner_service.dart';
+import 'smb_service.dart';
+import 'vc_sync_service.dart';
 import 'webdav_service.dart';
-import 'version_service.dart';
+import '../vc_database.dart';
+import 'vc_engine.dart';
 
 /// 同步引擎 - 核心同步逻辑
 class SyncEngine {
   final DatabaseHelper _db = DatabaseHelper.instance;
   final FileScannerService _scanner = FileScannerService();
   final WebDAVService _webdav = WebDAVService();
-  final VersionService _versionService = VersionService();
+  final SmbService _smb = SmbService();
+  final VcSyncService _vcSync = VcSyncService();
 
   /// 同步进度回调
   final void Function(double progress, String message)? onProgress;
@@ -31,6 +33,13 @@ class SyncEngine {
   bool _isCancelled = false;
   bool _isPaused = false;
   SyncLog? _currentLog;
+  String _vcRepositoryId = '';
+  String _vcRemoteId = '';
+  String _preSyncCommitId = '';
+  String _postSyncCommitId = '';
+  String _remoteHeadCommitId = '';
+  int _aheadCount = 0;
+  int _behindCount = 0;
 
   SyncEngine({this.onProgress, this.onComplete, this.onError});
 
@@ -38,11 +47,24 @@ class SyncEngine {
   Future<SyncLog?> executeSync(SyncTask task) async {
     _isCancelled = false;
     _isPaused = false;
+    _vcRepositoryId = '';
+    _vcRemoteId = '';
+    _preSyncCommitId = '';
+    _postSyncCommitId = '';
+    _remoteHeadCommitId = '';
+    _aheadCount = 0;
+    _behindCount = 0;
 
-    _currentLog = SyncLog(
-      taskId: task.id,
-      taskName: task.name,
+    final effectiveTask = await _resolveTaskWithTarget(task);
+
+    await _prepareVcContext(effectiveTask);
+    _preSyncCommitId = await _autoCommit(
+      message:
+          'sync(pre): ${effectiveTask.name} -> ${effectiveTask.remoteProtocol.value}:${effectiveTask.remoteHost}${effectiveTask.remotePath}',
     );
+    await _prepareVcStateBeforeSync(effectiveTask);
+
+    _currentLog = SyncLog(taskId: task.id, taskName: task.name);
 
     try {
       _reportProgress(0.0, '开始同步...');
@@ -54,20 +76,26 @@ class SyncEngine {
 
       // 1. 扫描本地文件
       _reportProgress(0.05, '扫描本地文件...');
-      final localSnapshots =
-          await _scanner.scanLocalFolder(task, task.localPath);
+      final localSnapshots = await _scanner.scanLocalFolder(
+        effectiveTask,
+        effectiveTask.localPath,
+      );
 
       if (_isCancelled) return _finishLog(task, 'cancelled');
 
       // 2. 连接远端并扫描
       List<FileSnapshot> remoteSnapshots = [];
-      if (task.syncDirection != SyncDirection.localOnly) {
+      if (effectiveTask.syncDirection != SyncDirection.localOnly) {
         _reportProgress(0.1, '连接远端服务器...');
 
-        if (task.remoteProtocol == RemoteProtocol.webdav) {
-          final connected = await _webdav.connect(task);
+        if (effectiveTask.remoteProtocol == RemoteProtocol.webdav) {
+          final connected = await _webdav.connect(effectiveTask);
           if (!connected) throw Exception('无法连接到WebDAV服务器');
-          remoteSnapshots = await _webdav.scanRemoteFolder(task);
+          remoteSnapshots = await _webdav.scanRemoteFolder(effectiveTask);
+        } else if (effectiveTask.remoteProtocol == RemoteProtocol.smb) {
+          final connected = await _smb.connect(effectiveTask);
+          if (!connected) throw Exception('无法连接到 SMB 服务器');
+          remoteSnapshots = await _smb.scanRemoteFolder(effectiveTask);
         }
       }
 
@@ -75,8 +103,11 @@ class SyncEngine {
 
       // 3. 检测变更
       _reportProgress(0.2, '检测文件变更...');
-      final changes =
-          await _scanner.detectChanges(task, localSnapshots, remoteSnapshots);
+      final changes = await _scanner.detectChanges(
+        effectiveTask,
+        localSnapshots,
+        remoteSnapshots,
+      );
 
       _currentLog!.totalFiles = changes.length;
 
@@ -95,23 +126,25 @@ class SyncEngine {
         }
 
         try {
-          await _executeChange(task, change);
+          await _executeChange(effectiveTask, change);
           _currentLog!.successCount++;
         } catch (e) {
           _currentLog!.failCount++;
-          _currentLog!.entries.add(LogEntry(
-            filePath: change.relativePath,
-            operation: change.operation.value,
-            status: 'failed',
-            detail: e.toString(),
-          ));
+          _currentLog!.entries.add(
+            LogEntry(
+              filePath: change.relativePath,
+              operation: change.operation.value,
+              status: 'failed',
+              detail: e.toString(),
+            ),
+          );
 
           // 重试逻辑
           bool retrySuccess = false;
           for (int i = 0; i < task.retryCount; i++) {
             await Future.delayed(Duration(seconds: task.retryDelaySeconds));
             try {
-              await _executeChange(task, change);
+              await _executeChange(effectiveTask, change);
               _currentLog!.failCount--;
               _currentLog!.successCount++;
               retrySuccess = true;
@@ -131,12 +164,19 @@ class SyncEngine {
 
       // 5. 保存快照（仅在未取消时）
       if (!_isCancelled) {
-        _reportProgress(0.95, '保存文件快照...');
-        await _scanner.saveSnapshots(task.id, localSnapshots);
+        await _finalizeVcStateAfterSync(effectiveTask);
+        _postSyncCommitId = await _autoCommit(
+          message:
+              'sync(post): ${effectiveTask.name} -> ${effectiveTask.remoteProtocol.value}:${effectiveTask.remoteHost}${effectiveTask.remotePath}',
+        );
+        await _prepareVcStateBeforeSync(effectiveTask);
 
-        // 6. 清理旧版本
-        _reportProgress(0.98, '清理旧版本...');
-        await _versionService.autoCleanup(task.id);
+        _reportProgress(0.95, '保存文件快照...');
+        final latestLocalSnapshots = await _scanner.scanLocalFolder(
+          effectiveTask,
+          effectiveTask.localPath,
+        );
+        await _scanner.saveSnapshots(effectiveTask.id, latestLocalSnapshots);
       }
 
       // 完成
@@ -146,6 +186,9 @@ class SyncEngine {
       _currentLog!.errorMessage = e.toString();
       if (onError != null) onError!(e.toString());
       return _finishLog(task, 'failed');
+    } finally {
+      _webdav.disconnect();
+      await _smb.disconnect();
     }
   }
 
@@ -174,89 +217,89 @@ class SyncEngine {
 
   /// 上传文件
   Future<void> _uploadFile(SyncTask task, FileChange change) async {
-    // 创建版本备份
-    // 仅本地模式：为所有变更（新增和修改）创建版本备份
-    // 普通模式：仅为覆盖修改创建版本备份
-    if (task.syncDirection == SyncDirection.localOnly) {
-      final version = await _versionService.createVersion(
-          task,
-          change.localPath,
-          change.relativePath,
-          change.changeType == ChangeType.added ? 'add' : 'modify');
-      // 在 localOnly 模式下，版本创建失败（返回 null）应视为主要操作失败
-      if (version == null) {
-        _currentLog!.entries.add(LogEntry(
-          filePath: change.relativePath,
-          operation: 'version_backup',
-          status: 'failed',
-        ));
-        return;
-      }
-    } else if (change.changeType == ChangeType.modified) {
-      await _versionService.createVersion(
-          task, change.localPath, change.relativePath, 'modify');
-    }
-
     if (task.syncDirection != SyncDirection.localOnly &&
         task.remoteProtocol == RemoteProtocol.webdav) {
-      final remotePath =
-          '${task.remotePath}/${change.relativePath}'.replaceAll('//', '/');
+      final remotePath = '${task.remotePath}/${change.relativePath}'.replaceAll(
+        '//',
+        '/',
+      );
       await _webdav.uploadFile(task, change.localPath, remotePath);
+    } else if (task.syncDirection != SyncDirection.localOnly &&
+        task.remoteProtocol == RemoteProtocol.smb) {
+      final remotePath = '${task.remotePath}/${change.relativePath}'.replaceAll(
+        '//',
+        '/',
+      );
+      await _smb.uploadFile(task, change.localPath, remotePath);
     }
 
-    _currentLog!.entries.add(LogEntry(
-      filePath: change.relativePath,
-      operation: task.syncDirection == SyncDirection.localOnly
-          ? 'version_backup'
-          : 'upload',
-      status: 'success',
-    ));
+    if (task.syncDirection == SyncDirection.localOnly) {
+      _currentLog!.skipCount++;
+    }
+
+    _currentLog!.entries.add(
+      LogEntry(
+        filePath: change.relativePath,
+        operation: task.syncDirection == SyncDirection.localOnly
+            ? 'skip'
+            : 'upload',
+        status: 'success',
+      ),
+    );
   }
 
   /// 下载文件
   Future<void> _downloadFile(SyncTask task, FileChange change) async {
     final localPath = p.join(task.localPath, change.relativePath);
 
-    // 创建版本备份
-    final existingFile = File(localPath);
-    if (await existingFile.exists()) {
-      await _versionService.createVersion(
-          task, localPath, change.relativePath, 'modify');
-    }
-
     if (task.remoteProtocol == RemoteProtocol.webdav) {
-      final remotePath =
-          '${task.remotePath}/${change.relativePath}'.replaceAll('//', '/');
+      final remotePath = '${task.remotePath}/${change.relativePath}'.replaceAll(
+        '//',
+        '/',
+      );
       await _webdav.downloadFile(task, remotePath, localPath);
+    } else if (task.remoteProtocol == RemoteProtocol.smb) {
+      final remotePath = '${task.remotePath}/${change.relativePath}'.replaceAll(
+        '//',
+        '/',
+      );
+      await _smb.downloadFile(task, remotePath, localPath);
     }
 
-    _currentLog!.entries.add(LogEntry(
-      filePath: change.relativePath,
-      operation: 'download',
-      status: 'success',
-    ));
+    _currentLog!.entries.add(
+      LogEntry(
+        filePath: change.relativePath,
+        operation: 'download',
+        status: 'success',
+      ),
+    );
   }
 
   /// 删除文件
   Future<void> _deleteFile(SyncTask task, FileChange change) async {
-    // 先保存版本
-    if (change.localSnapshot != null) {
-      await _versionService.createVersion(
-          task, change.localPath, change.relativePath, 'delete');
-    }
-
     if (task.syncDirection != SyncDirection.localOnly &&
         task.remoteProtocol == RemoteProtocol.webdav) {
-      final remotePath =
-          '${task.remotePath}/${change.relativePath}'.replaceAll('//', '/');
+      final remotePath = '${task.remotePath}/${change.relativePath}'.replaceAll(
+        '//',
+        '/',
+      );
       await _webdav.deleteRemoteFile(remotePath);
+    } else if (task.syncDirection != SyncDirection.localOnly &&
+        task.remoteProtocol == RemoteProtocol.smb) {
+      final remotePath = '${task.remotePath}/${change.relativePath}'.replaceAll(
+        '//',
+        '/',
+      );
+      await _smb.deleteRemoteFile(task, remotePath);
     }
 
-    _currentLog!.entries.add(LogEntry(
-      filePath: change.relativePath,
-      operation: 'delete',
-      status: 'success',
-    ));
+    _currentLog!.entries.add(
+      LogEntry(
+        filePath: change.relativePath,
+        operation: 'delete',
+        status: 'success',
+      ),
+    );
   }
 
   /// 处理冲突
@@ -269,29 +312,42 @@ class SyncEngine {
         await _downloadFile(task, change);
         break;
       case ConflictStrategy.keepBoth:
+        final merged = await _tryThreeWayMerge(task, change);
+        if (merged) {
+          break;
+        }
+
         // 保留双方，重命名冲突文件
         final localPath = p.join(task.localPath, change.relativePath);
         final dir = p.dirname(localPath);
         final name = p.basenameWithoutExtension(localPath);
         final ext = p.extension(localPath);
-        final conflictPath = p.join(dir,
-            '${name}_conflict_${DateTime.now().millisecondsSinceEpoch}$ext');
+        final conflictPath = p.join(
+          dir,
+          '${name}_conflict_${DateTime.now().millisecondsSinceEpoch}$ext',
+        );
 
         if (task.remoteProtocol == RemoteProtocol.webdav) {
-          final remotePath =
-              '${task.remotePath}/${change.relativePath}'.replaceAll('//', '/');
+          final remotePath = '${task.remotePath}/${change.relativePath}'
+              .replaceAll('//', '/');
           await _webdav.downloadFile(task, remotePath, conflictPath);
+        } else if (task.remoteProtocol == RemoteProtocol.smb) {
+          final remotePath = '${task.remotePath}/${change.relativePath}'
+              .replaceAll('//', '/');
+          await _smb.downloadFile(task, remotePath, conflictPath);
         }
         break;
     }
 
     _currentLog!.conflictCount++;
-    _currentLog!.entries.add(LogEntry(
-      filePath: change.relativePath,
-      operation: 'conflict',
-      status: 'resolved',
-      detail: task.conflictStrategy.label,
-    ));
+    _currentLog!.entries.add(
+      LogEntry(
+        filePath: change.relativePath,
+        operation: 'conflict',
+        status: 'resolved',
+        detail: task.conflictStrategy.label,
+      ),
+    );
   }
 
   /// 完成日志
@@ -299,20 +355,46 @@ class SyncEngine {
     _currentLog!.endTime = DateTime.now();
     _currentLog!.status = status;
 
-    await _db.insertLog(_currentLog!.toMap());
+    final repo = _vcRepositoryId.isEmpty
+        ? await VcDatabase.instance.getRepositoryByLocalPath(task.localPath)
+        : await VcDatabase.instance.getRepository(_vcRepositoryId);
 
-    // 保存日志条目
-    if (_currentLog!.entries.isNotEmpty) {
-      final entryMaps = _currentLog!.entries.map((e) => e.toMap()).toList();
-      await _db.insertLogEntries(_currentLog!.id, entryMaps);
+    if (repo != null) {
+      _vcRepositoryId = repo.id;
+      if (_remoteHeadCommitId.isNotEmpty && _vcRemoteId.isNotEmpty) {
+        final aheadBehind = await _vcSync.computeAheadBehind(
+          repositoryId: repo.id,
+          remoteHeadCommitId: _remoteHeadCommitId,
+        );
+        _aheadCount = aheadBehind.$1;
+        _behindCount = aheadBehind.$2;
+        await _vcSync.updateRemoteHeads(
+          remoteId: _vcRemoteId,
+          localHeadCommitId: repo.headCommitId,
+          remoteHeadCommitId: _remoteHeadCommitId,
+        );
+      }
+
+      await _vcSync.recordSyncRecord(
+        repositoryId: repo.id,
+        remoteId: _vcRemoteId.isEmpty ? null : _vcRemoteId,
+        task: task,
+        log: _currentLog!,
+        preCommitId: _preSyncCommitId,
+        postCommitId: _postSyncCommitId,
+        remoteHeadCommitId: _remoteHeadCommitId,
+        localHeadCommitId: repo.headCommitId,
+        aheadCount: _aheadCount,
+        behindCount: _behindCount,
+      );
     }
 
     // 更新任务状态
     task.status = status == 'success'
         ? TaskStatus.success
         : status == 'cancelled'
-            ? TaskStatus.cancelled
-            : TaskStatus.failed;
+        ? TaskStatus.cancelled
+        : TaskStatus.failed;
     task.isRunning = false;
     task.lastSyncTime = DateTime.now();
     task.syncProgress = 0.0;
@@ -345,4 +427,212 @@ class SyncEngine {
 
   bool get isCancelled => _isCancelled;
   bool get isPaused => _isPaused;
+
+  Future<SyncTask> _resolveTaskWithTarget(SyncTask task) async {
+    if (task.syncDirection == SyncDirection.localOnly) {
+      return task;
+    }
+
+    if (task.targetId == null || task.targetId!.isEmpty) {
+      return task;
+    }
+
+    final targetMap = await _db.getTarget(task.targetId!);
+    if (targetMap == null) {
+      throw Exception('同步目标不存在或已删除，请重新选择目标');
+    }
+
+    return task.copyWith(
+      remoteProtocol: RemoteProtocol.fromValue(
+        targetMap['remote_protocol'] as String,
+      ),
+      remoteHost: targetMap['remote_host'] as String,
+      remotePort: targetMap['remote_port'] as int? ?? 445,
+      remoteUsername: targetMap['remote_username'] as String? ?? '',
+      remotePassword: targetMap['remote_password'] as String? ?? '',
+    );
+  }
+
+  Future<void> _prepareVcStateBeforeSync(SyncTask task) async {
+    try {
+      await _vcSync.exportRepositoryState(task.localPath);
+    } catch (_) {
+      // Keep sync available even if repository metadata export fails.
+    }
+  }
+
+  Future<void> _finalizeVcStateAfterSync(SyncTask task) async {
+    if (task.syncDirection == SyncDirection.localOnly) {
+      return;
+    }
+    try {
+      final result = await _vcSync.importRepositoryState(task.localPath);
+      if (result.imported) {
+        _remoteHeadCommitId = result.remoteHeadCommitId;
+        await _vcSync.exportRepositoryState(task.localPath);
+      }
+    } catch (_) {
+      // Keep sync available even if repository metadata import fails.
+    }
+  }
+
+  Future<void> _prepareVcContext(SyncTask task) async {
+    final repo = await _vcSync.ensureRepositoryForLocalPath(
+      localPath: task.localPath,
+      preferredName: task.name,
+    );
+    _vcRepositoryId = repo.id;
+
+    if (task.syncDirection == SyncDirection.localOnly) {
+      return;
+    }
+
+    String? targetName;
+    if (task.targetId != null && task.targetId!.isNotEmpty) {
+      final targetMap = await _db.getTarget(task.targetId!);
+      targetName = targetMap?['name']?.toString();
+    }
+
+    final remote = await _vcSync.ensureRemoteForTask(
+      repositoryId: repo.id,
+      task: task,
+      targetName: targetName,
+    );
+    _vcRemoteId = remote['id']?.toString() ?? '';
+  }
+
+  Future<String> _autoCommit({required String message}) async {
+    if (_vcRepositoryId.isEmpty) {
+      return '';
+    }
+
+    try {
+      final engine = VcEngine(repositoryId: _vcRepositoryId);
+      final addResult = await engine.add(all: true);
+      if (addResult.result == VcOperationResult.error) {
+        return '';
+      }
+
+      final commitResult = await engine.commit(message: message);
+      if (!commitResult.isSuccess) {
+        return '';
+      }
+
+      final data = commitResult.data;
+      if (data == null) {
+        return '';
+      }
+
+      final commitId = (data as dynamic).id;
+      return commitId == null ? '' : commitId.toString();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  Future<bool> _tryThreeWayMerge(SyncTask task, FileChange change) async {
+    if (_vcRepositoryId.isEmpty) {
+      return false;
+    }
+
+    try {
+      final repo = await VcDatabase.instance.getRepository(_vcRepositoryId);
+      if (repo == null || repo.headCommitId.isEmpty) {
+        return false;
+      }
+
+      final entries = await VcDatabase.instance.getTreeEntries(
+        repo.headCommitId,
+      );
+      dynamic baseEntry;
+      for (final entry in entries) {
+        if (entry.relativePath == change.relativePath) {
+          baseEntry = entry;
+          break;
+        }
+      }
+      if (baseEntry == null || (baseEntry.fileHash as String).isEmpty) {
+        return false;
+      }
+
+      final basePath = p.join(
+        repo.localPath,
+        '.nanosync',
+        'objects',
+        baseEntry.fileHash as String,
+      );
+      final localPath = p.join(task.localPath, change.relativePath);
+
+      final baseFile = File(basePath);
+      final localFile = File(localPath);
+      if (!await baseFile.exists() || !await localFile.exists()) {
+        return false;
+      }
+
+      final tempDir = await Directory.systemTemp.createTemp('nanosync-merge-');
+      final remoteTempPath = p.join(tempDir.path, 'remote.tmp');
+
+      try {
+        final remotePath = '${task.remotePath}/${change.relativePath}'
+            .replaceAll('//', '/');
+        if (task.remoteProtocol == RemoteProtocol.webdav) {
+          await _webdav.downloadFile(task, remotePath, remoteTempPath);
+        } else if (task.remoteProtocol == RemoteProtocol.smb) {
+          await _smb.downloadFile(task, remotePath, remoteTempPath);
+        } else {
+          return false;
+        }
+
+        final baseText = await baseFile.readAsString();
+        final localText = await localFile.readAsString();
+        final remoteText = await File(remoteTempPath).readAsString();
+        final merged = _simpleThreeWayMerge(baseText, localText, remoteText);
+        if (merged == null) {
+          return false;
+        }
+
+        await localFile.writeAsString(merged);
+        await _uploadFile(
+          task,
+          FileChange(
+            taskId: change.taskId,
+            relativePath: change.relativePath,
+            localPath: localPath,
+            remotePath: change.remotePath,
+            changeType: ChangeType.modified,
+            operation: SyncOperation.upload,
+            fileSize: change.fileSize,
+            crc32: change.crc32,
+          ),
+        );
+
+        _currentLog!.entries.add(
+          LogEntry(
+            filePath: change.relativePath,
+            operation: 'merge',
+            status: 'resolved',
+            detail: '三方合并自动完成',
+          ),
+        );
+        return true;
+      } finally {
+        await tempDir.delete(recursive: true);
+      }
+    } catch (_) {
+      return false;
+    }
+  }
+
+  String? _simpleThreeWayMerge(String base, String local, String remote) {
+    if (local == remote) {
+      return local;
+    }
+    if (local == base) {
+      return remote;
+    }
+    if (remote == base) {
+      return local;
+    }
+    return null;
+  }
 }

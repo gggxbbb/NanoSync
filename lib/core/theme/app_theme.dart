@@ -24,9 +24,9 @@ class AppStyles {
   static Color lightTextPrimary(Color? color) => color ?? Colors.black;
   static Color darkTextPrimary(Color? color) => color ?? Colors.white;
   static Color lightTextSecondary(bool isDark) =>
-      isDark ? Colors.grey[100]! : Colors.grey[140]!;
+      isDark ? Colors.grey[100] : Colors.grey[140];
   static Color lightTextTertiary(bool isDark) =>
-      isDark ? Colors.grey[120]! : Colors.grey[140]!;
+      isDark ? Colors.grey[120] : Colors.grey[140];
 
   // ============ 边框颜色 ============
   static Color borderColor(bool isDark) =>
@@ -117,7 +117,7 @@ class AppStyles {
 
   // ============ 图标颜色 ============
   static Color iconColor(bool isDark, {Color? customColor}) =>
-      customColor ?? (isDark ? Colors.grey[140]! : Colors.grey[140]!);
+      customColor ?? (isDark ? Colors.grey[140] : Colors.grey[140]);
 
   static Color iconColorPrimary() => primaryColor;
 

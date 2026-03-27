@@ -47,13 +47,17 @@ class SettingsCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(title!, style: theme.typography.subtitle),
+                          Text(
+                            title!,
+                            style: AppStyles.textStyleSubtitle.copyWith(
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                          ),
                           if (subtitle != null) ...[
                             const SizedBox(height: 2),
                             Text(
                               subtitle!,
-                              style: TextStyle(
-                                fontSize: 12,
+                              style: AppStyles.textStyleCaption.copyWith(
                                 color: AppStyles.lightTextSecondary(isDark),
                               ),
                             ),
@@ -143,15 +147,14 @@ class InfoCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               title,
-              style: TextStyle(
-                fontSize: 12,
+              style: AppStyles.textStyleCaption.copyWith(
                 color: AppStyles.lightTextSecondary(isDark),
               ),
             ),
             const SizedBox(height: 4),
             Text(
               value ?? '-',
-              style: theme.typography.subtitle?.copyWith(
+              style: AppStyles.textStyleSubtitle.copyWith(
                 fontWeight: FontWeight.w600,
                 color: isDark ? Colors.white : Colors.black,
               ),
@@ -215,15 +218,15 @@ class TaskCard extends StatelessWidget {
                   children: [
                     Text(
                       name,
-                      style: theme.typography.body?.copyWith(
+                      style: AppStyles.textStyleBody.copyWith(
                         fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : Colors.black,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       description,
-                      style: TextStyle(
-                        fontSize: 12,
+                      style: AppStyles.textStyleCaption.copyWith(
                         color: AppStyles.lightTextSecondary(isDark),
                       ),
                       maxLines: 1,

@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import '../../../core/theme/app_theme.dart';
 
 class EmptyState extends StatelessWidget {
   final IconData icon;
@@ -41,15 +42,16 @@ class EmptyState extends StatelessWidget {
           const SizedBox(height: 20),
           Text(
             title,
-            style: theme.typography.subtitle?.copyWith(
+            style: AppStyles.textStyleSubtitle.copyWith(
               fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white : Colors.black,
             ),
           ),
           if (subtitle != null) ...[
             const SizedBox(height: 8),
             Text(
               subtitle!,
-              style: TextStyle(
+              style: AppStyles.textStyleBody.copyWith(
                 color: isDark ? Colors.grey[120] : Colors.grey[140],
               ),
               textAlign: TextAlign.center,
@@ -89,7 +91,12 @@ class LoadingOverlay extends StatelessWidget {
                   const ProgressRing(),
                   if (message != null) ...[
                     const SizedBox(height: 16),
-                    Text(message!, style: const TextStyle(color: Colors.white)),
+                    Text(
+                      message!,
+                      style: AppStyles.textStyleBody.copyWith(
+                        color: Colors.white,
+                      ),
+                    ),
                   ],
                 ],
               ),
@@ -127,16 +134,16 @@ class SectionHeader extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: theme.typography.subtitle?.copyWith(
+                  style: AppStyles.textStyleSubtitle.copyWith(
                     fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : Colors.black,
                   ),
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     subtitle!,
-                    style: TextStyle(
-                      fontSize: 12,
+                    style: AppStyles.textStyleCaption.copyWith(
                       color: isDark ? Colors.grey[120] : Colors.grey[140],
                     ),
                   ),

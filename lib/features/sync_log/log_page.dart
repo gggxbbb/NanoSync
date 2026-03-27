@@ -1,8 +1,7 @@
 import '../../core/theme/app_theme.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../../data/models/sync_log.dart';
-import '../../data/database/database_helper.dart';
-import '../../core/theme/app_theme.dart' show AppStyles, ThemeManager;
+import '../../data/services/vc_sync_service.dart';
 import '../../shared/widgets/components/indicators.dart';
 import '../../shared/widgets/components/dialogs.dart';
 import '../../shared/providers/task_provider.dart';
@@ -16,7 +15,7 @@ class LogPage extends StatefulWidget {
 }
 
 class _LogPageState extends State<LogPage> {
-  final DatabaseHelper _db = DatabaseHelper.instance;
+  final VcSyncService _vcSync = VcSyncService();
   List<SyncLog> _logs = [];
   bool _loading = true;
   String _searchQuery = '';
@@ -29,9 +28,9 @@ class _LogPageState extends State<LogPage> {
 
   Future<void> _loadLogs() async {
     setState(() => _loading = true);
-    final maps = await _db.getAllLogs();
+    final logs = await _vcSync.getAllSyncLogs();
     setState(() {
-      _logs = maps.map((m) => SyncLog.fromMap(m)).toList();
+      _logs = logs;
       _loading = false;
     });
   }
@@ -47,23 +46,40 @@ class _LogPageState extends State<LogPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = FluentTheme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : Colors.black;
 
     return ScaffoldPage(
       header: PageHeader(
-        title: const Text('同步日志'),
-        commandBar: CommandBar(
-          primaryItems: [
-            CommandBarButton(
-              icon: const Icon(FluentIcons.refresh),
-              label: const Text('刷新'),
-              onPressed: _loadLogs,
-            ),
-            CommandBarButton(
-              icon: const Icon(FluentIcons.delete),
-              label: const Text('清空'),
-              onPressed: _clearLogs,
-            ),
-          ],
+        title: Text(
+          '同步日志',
+          style: AppStyles.textStyleTitle.copyWith(color: primaryTextColor),
+        ),
+        commandBar: Align(
+          alignment: Alignment.centerRight,
+          child: CommandBar(
+            primaryItems: [
+              CommandBarButton(
+                icon: const Icon(FluentIcons.refresh),
+                label: Text(
+                  '刷新',
+                  style: AppStyles.textStyleButton.copyWith(
+                    color: primaryTextColor,
+                  ),
+                ),
+                onPressed: _loadLogs,
+              ),
+              CommandBarButton(
+                icon: const Icon(FluentIcons.delete),
+                label: Text(
+                  '清空',
+                  style: AppStyles.textStyleButton.copyWith(
+                    color: primaryTextColor,
+                  ),
+                ),
+                onPressed: _clearLogs,
+              ),
+            ],
+          ),
         ),
       ),
       content: Column(
@@ -283,7 +299,7 @@ class _LogPageState extends State<LogPage> {
       isDestructive: true,
     );
     if (confirmed) {
-      await _db.clearAllLogs();
+      await _vcSync.clearAllSyncLogs();
       _loadLogs();
     }
   }

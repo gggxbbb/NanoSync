@@ -30,9 +30,15 @@ class _SettingsPageState extends State<SettingsPage> {
         theme.themeMode == ThemeMode.dark ||
         (theme.themeMode == ThemeMode.system &&
             MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+    final primaryTextColor = isDark ? Colors.white : Colors.black;
 
     return ScaffoldPage(
-      header: const PageHeader(title: Text('系统设置')),
+      header: PageHeader(
+        title: Text(
+          '系统设置',
+          style: AppStyles.textStyleTitle.copyWith(color: primaryTextColor),
+        ),
+      ),
       content: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -243,6 +249,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildAboutSection(bool isDark) {
+    final primaryTextColor = isDark ? Colors.white : Colors.black;
+
     return SettingsCard(
       title: '开源信息',
       icon: FluentIcons.open_source,
@@ -267,9 +275,9 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 16),
           Text(
             '开源依赖',
-            style: TextStyle(
+            style: AppStyles.textStyleBody.copyWith(
               fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : Colors.black,
+              color: primaryTextColor,
             ),
           ),
           const SizedBox(height: 8),
@@ -291,9 +299,9 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     child: Text(
                       '${d.name} (${d.license})',
-                      style: TextStyle(
+                      style: AppStyles.textStyleCaption.copyWith(
                         fontSize: 11,
-                        color: isDark ? Colors.white : Colors.black,
+                        color: primaryTextColor,
                       ),
                     ),
                   ),
@@ -304,7 +312,7 @@ class _SettingsPageState extends State<SettingsPage> {
           Center(
             child: Text(
               'NanoSync ${AppConstants.appVersion} · MIT License',
-              style: TextStyle(
+              style: AppStyles.textStyleCaption.copyWith(
                 fontSize: 12,
                 color: isDark ? Colors.grey[120] : Colors.grey[140],
               ),
@@ -334,13 +342,15 @@ class _SettingsPageState extends State<SettingsPage> {
               width: 80,
               child: Text(
                 label,
-                style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                style: AppStyles.textStyleBody.copyWith(
+                  color: isDark ? Colors.white : Colors.black,
+                ),
               ),
             ),
             Expanded(
               child: Text(
                 display,
-                style: TextStyle(
+                style: AppStyles.textStyleBody.copyWith(
                   color: AppStyles.primaryColor,
                   decoration: TextDecoration.underline,
                 ),

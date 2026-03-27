@@ -1,7 +1,6 @@
 import '../../core/theme/app_theme.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../../core/constants/app_constants.dart';
-import '../../core/theme/app_theme.dart' show AppTheme;
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
@@ -10,9 +9,15 @@ class AboutPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : Colors.black;
 
     return ScaffoldPage(
-      header: const PageHeader(title: Text('关于')),
+      header: PageHeader(
+        title: Text(
+          '关于',
+          style: AppStyles.textStyleTitle.copyWith(color: primaryTextColor),
+        ),
+      ),
       content: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(48),
@@ -51,8 +56,9 @@ class AboutPage extends StatelessWidget {
                 const SizedBox(height: 24),
                 Text(
                   AppConstants.appName,
-                  style: theme.typography.title?.copyWith(
+                  style: AppStyles.textStyleTitle.copyWith(
                     fontWeight: FontWeight.bold,
+                    color: primaryTextColor,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -67,7 +73,7 @@ class AboutPage extends StatelessWidget {
                   ),
                   child: Text(
                     'v${AppConstants.appVersion}',
-                    style: TextStyle(
+                    style: AppStyles.textStyleBody.copyWith(
                       color: AppStyles.primaryColor,
                       fontWeight: FontWeight.w500,
                     ),
@@ -77,7 +83,7 @@ class AboutPage extends StatelessWidget {
                 Text(
                   AppConstants.appDescription,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: AppStyles.textStyleBody.copyWith(
                     color: isDark ? Colors.grey[120] : Colors.grey[140],
                   ),
                 ),
@@ -96,7 +102,12 @@ class AboutPage extends StatelessWidget {
                               color: AppStyles.successColor,
                             ),
                             const SizedBox(width: 12),
-                            Text('主要功能', style: theme.typography.subtitle),
+                            Text(
+                              '主要功能',
+                              style: AppStyles.textStyleSubtitle.copyWith(
+                                color: primaryTextColor,
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -119,7 +130,10 @@ class AboutPage extends StatelessWidget {
                                 Expanded(
                                   child: Text(
                                     f,
-                                    style: const TextStyle(fontSize: 13),
+                                    style: AppStyles.textStyleBody.copyWith(
+                                      fontSize: 13,
+                                      color: primaryTextColor,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -142,7 +156,7 @@ class AboutPage extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(
                       'MIT License',
-                      style: TextStyle(
+                      style: AppStyles.textStyleBody.copyWith(
                         color: isDark ? Colors.grey[100] : Colors.grey[140],
                       ),
                     ),
@@ -151,7 +165,7 @@ class AboutPage extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   '本软件遵循MIT开源协议',
-                  style: TextStyle(
+                  style: AppStyles.textStyleCaption.copyWith(
                     fontSize: 12,
                     color: isDark ? Colors.grey[120] : Colors.grey[140],
                   ),
@@ -166,7 +180,7 @@ class AboutPage extends StatelessWidget {
 
   static const _features = [
     '本地文件夹与SMB/WebDAV远端同步',
-    '支持单向、双向、镜像同步模式',
+    '默认双向同步，支持一键切换仅本地模式',
     '文件版本管理与恢复',
     '定时同步与实时文件监听',
     '冲突检测与智能处理',

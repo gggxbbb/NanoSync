@@ -135,11 +135,9 @@ class TaskProvider extends ChangeNotifier {
         task.isRunning = false;
         task.syncProgress = 1.0;
         task.lastSyncTime = DateTime.now();
-        if (log != null) {
-          task.status = log.status == 'success'
-              ? TaskStatus.success
-              : TaskStatus.failed;
-        }
+        task.status = log.status == 'success'
+            ? TaskStatus.success
+            : TaskStatus.failed;
         notifyListeners();
       },
       onError: (error) {

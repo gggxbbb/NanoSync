@@ -4,7 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:window_manager/window_manager.dart';
 import 'core/theme/app_theme.dart';
+import 'data/vc_database.dart';
 import 'shared/providers/task_provider.dart';
+import 'shared/providers/target_provider.dart';
+import 'shared/providers/vc_repository_provider.dart';
 import 'shared/widgets/app_shell.dart';
 
 void main() async {
@@ -31,11 +34,16 @@ void main() async {
 
   sqfliteFfiInit();
 
+  // Pre-initialize version control database to ensure schema is ready.
+  await VcDatabase.instance.database;
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeManager()),
         ChangeNotifierProvider(create: (_) => TaskProvider()),
+        ChangeNotifierProvider(create: (_) => TargetProvider()),
+        ChangeNotifierProvider(create: (_) => VcRepositoryProvider()),
       ],
       child: const NanoSyncApp(),
     ),
@@ -55,18 +63,7 @@ class NanoSyncApp extends StatelessWidget {
       themeMode: theme.themeMode,
       theme: AppStyles.lightTheme,
       darkTheme: AppStyles.darkTheme,
-      builder: (context, child) {
-        return Directionality(
-          textDirection: TextDirection.ltr,
-          child: MediaQuery(
-            data: MediaQuery.of(context),
-            child: DefaultTextStyle(
-              style: AppStyles.textStyleBody,
-              child: child!,
-            ),
-          ),
-        );
-      },
+      builder: (context, child) => child ?? const SizedBox.shrink(),
       home: const AppShell(),
     );
   }

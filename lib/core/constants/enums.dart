@@ -13,7 +13,7 @@ enum SyncDirection {
   static SyncDirection fromValue(String value) {
     return SyncDirection.values.firstWhere(
       (e) => e.value == value,
-      orElse: () => SyncDirection.localToRemote,
+      orElse: () => SyncDirection.bidirectional,
     );
   }
 }

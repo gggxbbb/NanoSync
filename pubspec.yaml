@@ -23,6 +23,7 @@ dependencies:
 
   # Network Protocols - WebDAV
   webdav_client_plus: ^1.0.2
+  smb_connect: ^0.0.9
 
   # Database
   sqflite_common_ffi: ^2.3.3+1

@@ -4,9 +4,12 @@ import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 import '../../core/theme/app_theme.dart';
 import '../providers/task_provider.dart';
+import '../providers/vc_repository_provider.dart';
+import '../providers/target_provider.dart';
+import '../../features/dashboard/dashboard_page.dart';
 import '../../features/task_management/task_list_page.dart';
-import '../../features/realtime_monitor/monitor_page.dart';
-import '../../features/version_management/version_page.dart';
+import '../../features/task_management/target_list_page.dart';
+import '../../features/version_control/vc_page.dart';
 import '../../features/sync_log/log_page.dart';
 import '../../features/settings/settings_page.dart';
 import '../../features/about/about_page.dart';
@@ -21,25 +24,39 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> with WindowListener {
   int _selectedIndex = 0;
   bool _isMaximized = false;
-
-  final List<Widget> _pages = const [
-    TaskListPage(),
-    MonitorPage(),
-    VersionPage(),
-    LogPage(),
-    SettingsPage(),
-    AboutPage(),
-  ];
+  late final TargetProvider _targetProvider;
 
   @override
   void initState() {
     super.initState();
+    _targetProvider = context.read<TargetProvider>();
     windowManager.addListener(this);
     _checkMaximized();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _initVersionControl();
+    });
+  }
+
+  Future<void> _initVersionControl() async {
+    final vcProvider = context.read<VcRepositoryProvider>();
+    await vcProvider.loadRepositories();
+    await _targetProvider.loadTargets(refreshStatuses: true);
+    _targetProvider.startAutoRefresh(
+      interval: const Duration(seconds: 30),
+      refreshImmediately: false,
+    );
+    if (!mounted) return;
+
+    if (vcProvider.currentRepository == null &&
+        vcProvider.repositories.isNotEmpty) {
+      await vcProvider.selectRepository(vcProvider.repositories.first.id);
+    }
   }
 
   @override
   void dispose() {
+    _targetProvider.stopAutoRefresh();
     windowManager.removeListener(this);
     super.dispose();
   }
@@ -68,10 +85,7 @@ class _AppShellState extends State<AppShell> with WindowListener {
   /// 设置标题栏样式（隐藏系统按钮），出错时静默忽略
   void _applyTitleBarStyle() {
     windowManager
-        .setTitleBarStyle(
-          TitleBarStyle.hidden,
-          windowButtonVisibility: false,
-        )
+        .setTitleBarStyle(TitleBarStyle.hidden, windowButtonVisibility: false)
         .catchError((_) {});
   }
 
@@ -94,10 +108,21 @@ class _AppShellState extends State<AppShell> with WindowListener {
   @override
   Widget build(BuildContext context) {
     final theme = context.watch<ThemeManager>();
+    final vcProvider = context.watch<VcRepositoryProvider>();
     final isDark =
         theme.themeMode == ThemeMode.dark ||
         (theme.themeMode == ThemeMode.system &&
             MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+
+    final pages = [
+      const DashboardPage(),
+      const TaskListPage(),
+      const TargetListPage(),
+      VersionControlPage(repositoryId: vcProvider.currentRepository?.id),
+      const LogPage(),
+      const SettingsPage(),
+      const AboutPage(),
+    ];
 
     _updateWindowEffect(isDark, theme.useMica);
 
@@ -108,7 +133,7 @@ class _AppShellState extends State<AppShell> with WindowListener {
         paneBodyBuilder: (item, child) {
           return Container(
             color: theme.useMica ? Colors.transparent : null,
-            child: _pages[_selectedIndex],
+            child: pages[_selectedIndex],
           );
         },
         pane: NavigationPane(
@@ -118,18 +143,23 @@ class _AppShellState extends State<AppShell> with WindowListener {
           size: const NavigationPaneSize(openWidth: 240),
           items: [
             PaneItem(
+              icon: const Icon(FluentIcons.view),
+              title: Text('仪表盘', style: AppStyles.textStyleBody),
+              body: const SizedBox.shrink(),
+            ),
+            PaneItem(
               icon: const Icon(FluentIcons.sync_folder),
               title: Text('同步任务', style: AppStyles.textStyleBody),
               body: const SizedBox.shrink(),
             ),
             PaneItem(
-              icon: const Icon(FluentIcons.view),
-              title: Text('实时监控', style: AppStyles.textStyleBody),
+              icon: const Icon(FluentIcons.server),
+              title: Text('同步目标', style: AppStyles.textStyleBody),
               body: const SizedBox.shrink(),
             ),
             PaneItem(
-              icon: const Icon(FluentIcons.history),
-              title: Text('版本管理', style: AppStyles.textStyleBody),
+              icon: const Icon(FluentIcons.git_graph),
+              title: Text('版本控制', style: AppStyles.textStyleBody),
               body: const SizedBox.shrink(),
             ),
             PaneItem(

@@ -6,6 +6,7 @@ class SyncTask {
   final String id;
   String name;
   String localPath;
+  String? targetId;
   RemoteProtocol remoteProtocol;
   String remoteHost;
   int remotePort;
@@ -41,13 +42,14 @@ class SyncTask {
     String? id,
     required this.name,
     required this.localPath,
+    this.targetId,
     this.remoteProtocol = RemoteProtocol.smb,
     required this.remoteHost,
     this.remotePort = 445,
     required this.remoteUsername,
     this.remotePassword = '',
     required this.remotePath,
-    this.syncDirection = SyncDirection.localToRemote,
+    this.syncDirection = SyncDirection.bidirectional,
     this.syncTrigger = SyncTrigger.manual,
     this.scheduleType,
     this.scheduleInterval,
@@ -71,27 +73,36 @@ class SyncTask {
     this.retryDelaySeconds = 5,
     DateTime? createdAt,
     DateTime? updatedAt,
-  })  : id = id ?? const Uuid().v4(),
-        excludeExtensions = excludeExtensions ?? [],
-        excludeFolders = excludeFolders ?? [],
-        excludePatterns = excludePatterns ?? [],
-        createdAt = createdAt ?? DateTime.now(),
-        updatedAt = updatedAt ?? DateTime.now();
+  }) : id = id ?? const Uuid().v4(),
+       excludeExtensions = excludeExtensions ?? [],
+       excludeFolders = excludeFolders ?? [],
+       excludePatterns = excludePatterns ?? [],
+       createdAt = createdAt ?? DateTime.now(),
+       updatedAt = updatedAt ?? DateTime.now();
 
   /// 从数据库Map创建实例
   factory SyncTask.fromMap(Map<String, dynamic> map) {
+    final rawDirection = SyncDirection.fromValue(
+      map['sync_direction'] as String,
+    );
+    final normalizedDirection = rawDirection == SyncDirection.localOnly
+        ? SyncDirection.localOnly
+        : SyncDirection.bidirectional;
+
     return SyncTask(
       id: map['id'] as String,
       name: map['name'] as String,
       localPath: map['local_path'] as String,
-      remoteProtocol:
-          RemoteProtocol.fromValue(map['remote_protocol'] as String),
+      targetId: map['target_id'] as String?,
+      remoteProtocol: RemoteProtocol.fromValue(
+        map['remote_protocol'] as String,
+      ),
       remoteHost: map['remote_host'] as String,
       remotePort: map['remote_port'] as int,
       remoteUsername: map['remote_username'] as String,
       remotePassword: map['remote_password'] as String? ?? '',
       remotePath: map['remote_path'] as String,
-      syncDirection: SyncDirection.fromValue(map['sync_direction'] as String),
+      syncDirection: normalizedDirection,
       syncTrigger: SyncTrigger.fromValue(map['sync_trigger'] as String),
       scheduleType: map['schedule_type'] != null
           ? ScheduleType.fromValue(map['schedule_type'] as String)
@@ -101,8 +112,9 @@ class SyncTask {
       scheduleDayOfWeek: map['schedule_day_of_week'] as int?,
       scheduleDayOfMonth: map['schedule_day_of_month'] as int?,
       realtimeDelaySeconds: map['realtime_delay_seconds'] as int? ?? 3,
-      conflictStrategy:
-          ConflictStrategy.fromValue(map['conflict_strategy'] as String),
+      conflictStrategy: ConflictStrategy.fromValue(
+        map['conflict_strategy'] as String,
+      ),
       isEnabled: (map['is_enabled'] as int) == 1,
       isRunning: (map['is_running'] as int) == 1,
       status: TaskStatus.fromValue(map['status'] as String),
@@ -116,21 +128,21 @@ class SyncTask {
       syncProgress: (map['sync_progress'] as num?)?.toDouble() ?? 0.0,
       excludeExtensions: map['exclude_extensions'] != null
           ? (map['exclude_extensions'] as String)
-              .split(',')
-              .where((e) => e.isNotEmpty)
-              .toList()
+                .split(',')
+                .where((e) => e.isNotEmpty)
+                .toList()
           : [],
       excludeFolders: map['exclude_folders'] != null
           ? (map['exclude_folders'] as String)
-              .split(',')
-              .where((e) => e.isNotEmpty)
-              .toList()
+                .split(',')
+                .where((e) => e.isNotEmpty)
+                .toList()
           : [],
       excludePatterns: map['exclude_patterns'] != null
           ? (map['exclude_patterns'] as String)
-              .split(',')
-              .where((e) => e.isNotEmpty)
-              .toList()
+                .split(',')
+                .where((e) => e.isNotEmpty)
+                .toList()
           : [],
       bandwidthLimitKBps: map['bandwidth_limit_kbps'] as int? ?? 0,
       retryCount: map['retry_count'] as int? ?? 3,
@@ -146,6 +158,7 @@ class SyncTask {
       'id': id,
       'name': name,
       'local_path': localPath,
+      'target_id': targetId,
       'remote_protocol': remoteProtocol.value,
       'remote_host': remoteHost,
       'remote_port': remotePort,
@@ -183,6 +196,7 @@ class SyncTask {
   SyncTask copyWith({
     String? name,
     String? localPath,
+    String? targetId,
     RemoteProtocol? remoteProtocol,
     String? remoteHost,
     int? remotePort,
@@ -216,6 +230,7 @@ class SyncTask {
       id: id,
       name: name ?? this.name,
       localPath: localPath ?? this.localPath,
+      targetId: targetId ?? this.targetId,
       remoteProtocol: remoteProtocol ?? this.remoteProtocol,
       remoteHost: remoteHost ?? this.remoteHost,
       remotePort: remotePort ?? this.remotePort,

@@ -1,12 +1,13 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:provider/provider.dart';
-import '../../shared/providers/task_provider.dart';
-import '../../data/models/sync_task.dart';
 import '../../core/constants/enums.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/models/sync_task.dart';
+import '../../shared/providers/task_provider.dart';
+import '../../shared/providers/target_provider.dart';
 import '../../shared/widgets/components/cards.dart';
-import '../../shared/widgets/components/indicators.dart';
 import '../../shared/widgets/components/dialogs.dart';
+import '../../shared/widgets/components/indicators.dart';
 import 'task_edit_page.dart' show showTaskEditDialog;
 
 class TaskListPage extends StatefulWidget {
@@ -26,67 +27,102 @@ class _TaskListPageState extends State<TaskListPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<TaskProvider>().loadTasks();
+      context.read<TargetProvider>().loadTargets(refreshStatuses: true);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<TaskProvider>(
-      builder: (context, provider, _) {
+    return Consumer2<TaskProvider, TargetProvider>(
+      builder: (context, provider, targetProvider, _) {
+        final isDark = FluentTheme.of(context).brightness == Brightness.dark;
+        final primaryTextColor = isDark ? Colors.white : Colors.black;
+
         return ScaffoldPage(
           header: PageHeader(
-            title: const Text('同步任务'),
-            commandBar: _buildCommandBar(provider),
+            title: Text(
+              '同步任务',
+              style: AppStyles.textStyleTitle.copyWith(color: primaryTextColor),
+            ),
+            commandBar: _buildCommandBar(provider, primaryTextColor),
           ),
           content: provider.isLoading
               ? const Center(child: ProgressRing())
               : provider.tasks.isEmpty
               ? _buildEmptyState()
-              : _buildTaskList(provider),
+              : _buildTaskList(provider, targetProvider),
         );
       },
     );
   }
 
-  Widget _buildCommandBar(TaskProvider provider) {
-    return CommandBar(
-      primaryItems: [
-        CommandBarButton(
-          icon: const Icon(FluentIcons.add),
-          label: const Text('新建'),
-          onPressed: () => _navigateToEdit(null),
-        ),
-        CommandBarButton(
-          icon: const Icon(FluentIcons.search),
-          label: const Text('搜索'),
-          onPressed: () => _showSearch(),
-        ),
-        if (_selectionMode) ...[
-          const CommandBarSeparator(),
+  Widget _buildCommandBar(TaskProvider provider, Color primaryTextColor) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: CommandBar(
+        primaryItems: [
           CommandBarButton(
-            icon: const Icon(FluentIcons.play),
-            label: const Text('执行'),
-            onPressed: _selectedIds.isEmpty
-                ? null
-                : () => provider.batchRunSync(_selectedIds.toList()),
+            icon: const Icon(FluentIcons.add),
+            label: Text(
+              '新建',
+              style: AppStyles.textStyleButton.copyWith(
+                color: primaryTextColor,
+              ),
+            ),
+            onPressed: () => _navigateToEdit(null),
           ),
           CommandBarButton(
-            icon: const Icon(FluentIcons.delete),
-            label: const Text('删除'),
-            onPressed: _selectedIds.isEmpty
-                ? null
-                : () => _batchDelete(provider),
+            icon: const Icon(FluentIcons.search),
+            label: Text(
+              '搜索',
+              style: AppStyles.textStyleButton.copyWith(
+                color: primaryTextColor,
+              ),
+            ),
+            onPressed: _showSearch,
           ),
-          CommandBarButton(
-            icon: const Icon(FluentIcons.cancel),
-            label: const Text('取消'),
-            onPressed: () => setState(() {
-              _selectionMode = false;
-              _selectedIds.clear();
-            }),
-          ),
+          if (_selectionMode) ...[
+            const CommandBarSeparator(),
+            CommandBarButton(
+              icon: const Icon(FluentIcons.play),
+              label: Text(
+                '执行',
+                style: AppStyles.textStyleButton.copyWith(
+                  color: primaryTextColor,
+                ),
+              ),
+              onPressed: _selectedIds.isEmpty
+                  ? null
+                  : () => provider.batchRunSync(_selectedIds.toList()),
+            ),
+            CommandBarButton(
+              icon: const Icon(FluentIcons.delete),
+              label: Text(
+                '删除',
+                style: AppStyles.textStyleButton.copyWith(
+                  color: primaryTextColor,
+                ),
+              ),
+              onPressed: _selectedIds.isEmpty
+                  ? null
+                  : () => _batchDelete(provider),
+            ),
+            CommandBarButton(
+              icon: const Icon(FluentIcons.cancel),
+              label: Text(
+                '取消',
+                style: AppStyles.textStyleButton.copyWith(
+                  color: primaryTextColor,
+                ),
+              ),
+              onPressed: () => setState(() {
+                _selectionMode = false;
+                _selectedIds.clear();
+              }),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -102,7 +138,7 @@ class _TaskListPageState extends State<TaskListPage> {
     );
   }
 
-  Widget _buildTaskList(TaskProvider provider) {
+  Widget _buildTaskList(TaskProvider provider, TargetProvider targetProvider) {
     final filteredTasks = _searchQuery.isEmpty
         ? provider.tasks
         : provider.tasks
@@ -129,9 +165,9 @@ class _TaskListPageState extends State<TaskListPage> {
         if (runningTasks.isNotEmpty) ...[
           const SectionHeader(title: '正在同步'),
           ...runningTasks.map(
-            (t) => Padding(
+            (task) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: _buildTaskCard(t, provider),
+              child: _buildTaskCard(task, provider, targetProvider),
             ),
           ),
           const SizedBox(height: 16),
@@ -139,9 +175,9 @@ class _TaskListPageState extends State<TaskListPage> {
         if (idleTasks.isNotEmpty) ...[
           const SectionHeader(title: '等待中'),
           ...idleTasks.map(
-            (t) => Padding(
+            (task) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: _buildTaskCard(t, provider),
+              child: _buildTaskCard(task, provider, targetProvider),
             ),
           ),
           const SizedBox(height: 16),
@@ -149,9 +185,9 @@ class _TaskListPageState extends State<TaskListPage> {
         if (completedTasks.isNotEmpty) ...[
           const SectionHeader(title: '已完成'),
           ...completedTasks.map(
-            (t) => Padding(
+            (task) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: _buildTaskCard(t, provider),
+              child: _buildTaskCard(task, provider, targetProvider),
             ),
           ),
         ],
@@ -159,22 +195,37 @@ class _TaskListPageState extends State<TaskListPage> {
     );
   }
 
-  Widget _buildTaskCard(SyncTask task, TaskProvider provider) {
+  Widget _buildTaskCard(
+    SyncTask task,
+    TaskProvider provider,
+    TargetProvider targetProvider,
+  ) {
     final isSelected = _selectedIds.contains(task.id);
-    final theme = FluentTheme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = FluentTheme.of(context).brightness == Brightness.dark;
+
+    final target = targetProvider.getTarget(task.targetId);
+    final targetStatus = task.targetId == null
+        ? const TargetStatusInfo()
+        : targetProvider.statusOf(task.targetId!);
+
+    final description = task.syncDirection == SyncDirection.localOnly
+        ? '${task.localPath}（仅本地）'
+        : target == null
+        ? '${task.localPath} → 未绑定目标'
+        : '${task.localPath} → ${target.name} (${target.remoteHost}:${target.remotePort})';
 
     return TaskCard(
       name: task.name,
-      description:
-          '${task.localPath} → ${task.remoteProtocol.label}://${task.remoteHost}',
+      description: description,
       isSelected: isSelected,
       isRunning: task.isRunning,
       progress: task.syncProgress,
       leading: _buildStatusIcon(task),
       badges: [
+        if (task.syncDirection != SyncDirection.localOnly)
+          _buildTargetStatusBadge(targetStatus.state),
         StatusBadge(
-          label: task.syncDirection.label,
+          label: task.syncDirection == SyncDirection.localOnly ? '仅本地' : '双向同步',
           color: AppStyles.infoColor,
         ),
         StatusBadge(
@@ -203,7 +254,7 @@ class _TaskListPageState extends State<TaskListPage> {
                       FluentIcons.pause,
                       color: AppStyles.warningColor,
                     ),
-                    onPressed: () => provider.pauseCurrentSync(),
+                    onPressed: provider.pauseCurrentSync,
                   )
                 else
                   IconButton(
@@ -244,8 +295,9 @@ class _TaskListPageState extends State<TaskListPage> {
   }
 
   Widget _buildStatusIcon(SyncTask task) {
-    IconData icon;
-    Color color;
+    late IconData icon;
+    late Color color;
+
     switch (task.status) {
       case TaskStatus.syncing:
         icon = FluentIcons.sync;
@@ -267,6 +319,7 @@ class _TaskListPageState extends State<TaskListPage> {
         icon = FluentIcons.clock;
         color = AppStyles.infoColor;
     }
+
     return Container(
       width: 44,
       height: 44,
@@ -279,7 +332,7 @@ class _TaskListPageState extends State<TaskListPage> {
   }
 
   Widget _buildStatusBadge(TaskStatus status) {
-    Color color;
+    late Color color;
     switch (status) {
       case TaskStatus.syncing:
         color = AppStyles.primaryColor;
@@ -297,6 +350,19 @@ class _TaskListPageState extends State<TaskListPage> {
         color = AppStyles.infoColor;
     }
     return StatusBadge(label: status.label, color: color);
+  }
+
+  StatusBadge _buildTargetStatusBadge(TargetOnlineState state) {
+    switch (state) {
+      case TargetOnlineState.online:
+        return StatusBadge(label: '目标在线', color: AppStyles.successColor);
+      case TargetOnlineState.offline:
+        return StatusBadge(label: '目标离线', color: AppStyles.errorColor);
+      case TargetOnlineState.checking:
+        return StatusBadge(label: '检测中', color: AppStyles.warningColor);
+      case TargetOnlineState.unknown:
+        return StatusBadge(label: '状态未知', color: AppStyles.infoColor);
+    }
   }
 
   void _showSearch() {
@@ -329,10 +395,10 @@ class _TaskListPageState extends State<TaskListPage> {
   }
 
   void _navigateToEdit(SyncTask? task) {
-    showTaskEditDialog(
-      context,
-      task: task,
-    ).then((_) => context.read<TaskProvider>().loadTasks());
+    showTaskEditDialog(context, task: task).then((_) {
+      context.read<TaskProvider>().loadTasks();
+      context.read<TargetProvider>().loadTargets(refreshStatuses: true);
+    });
   }
 
   Future<void> _confirmDelete(SyncTask task, TaskProvider provider) async {
@@ -343,7 +409,10 @@ class _TaskListPageState extends State<TaskListPage> {
       isDestructive: true,
     );
     if (confirmed) {
-      provider.deleteTask(task.id);
+      await provider.deleteTask(task.id);
+      if (mounted) {
+        await context.read<TargetProvider>().loadTargets(refreshStatuses: true);
+      }
     }
   }
 
@@ -354,12 +423,17 @@ class _TaskListPageState extends State<TaskListPage> {
       content: '确定要删除选中的${_selectedIds.length}个任务吗？',
       isDestructive: true,
     );
-    if (confirmed) {
-      provider.batchDeleteTasks(_selectedIds.toList());
-      setState(() {
-        _selectedIds.clear();
-        _selectionMode = false;
-      });
+
+    if (!confirmed) return;
+
+    await provider.batchDeleteTasks(_selectedIds.toList());
+    setState(() {
+      _selectedIds.clear();
+      _selectionMode = false;
+    });
+
+    if (mounted) {
+      await context.read<TargetProvider>().loadTargets(refreshStatuses: true);
     }
   }
 }

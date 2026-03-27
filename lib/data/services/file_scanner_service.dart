@@ -13,7 +13,9 @@ class FileScannerService {
 
   /// 全量扫描本地文件夹，生成快照列表
   Future<List<FileSnapshot>> scanLocalFolder(
-      SyncTask task, String basePath) async {
+    SyncTask task,
+    String basePath,
+  ) async {
     final snapshots = <FileSnapshot>[];
     final dir = Directory(basePath);
     if (!await dir.exists()) return snapshots;
@@ -26,33 +28,40 @@ class FileScannerService {
       if (entity is File) {
         final stat = await entity.stat();
         final crc32 = await ChecksumUtil.calculateCrc32Chunked(entity.path);
-        snapshots.add(FileSnapshot(
-          taskId: task.id,
-          relativePath: relativePath.replaceAll('\\', '/'),
-          absolutePath: entity.path,
-          fileSize: stat.size,
-          lastModified: stat.modified,
-          crc32: crc32,
-          isDirectory: false,
-        ));
+        snapshots.add(
+          FileSnapshot(
+            taskId: task.id,
+            relativePath: relativePath.replaceAll('\\', '/'),
+            absolutePath: entity.path,
+            fileSize: stat.size,
+            lastModified: stat.modified,
+            crc32: crc32,
+            isDirectory: false,
+          ),
+        );
       } else if (entity is Directory) {
-        snapshots.add(FileSnapshot(
-          taskId: task.id,
-          relativePath: relativePath.replaceAll('\\', '/'),
-          absolutePath: entity.path,
-          fileSize: 0,
-          lastModified: DateTime.now(),
-          crc32: '',
-          isDirectory: true,
-        ));
+        snapshots.add(
+          FileSnapshot(
+            taskId: task.id,
+            relativePath: relativePath.replaceAll('\\', '/'),
+            absolutePath: entity.path,
+            fileSize: 0,
+            lastModified: DateTime.now(),
+            crc32: '',
+            isDirectory: true,
+          ),
+        );
       }
     }
     return snapshots;
   }
 
   /// 检测文件变更
-  Future<List<FileChange>> detectChanges(SyncTask task,
-      List<FileSnapshot> currentLocal, List<FileSnapshot> currentRemote) async {
+  Future<List<FileChange>> detectChanges(
+    SyncTask task,
+    List<FileSnapshot> currentLocal,
+    List<FileSnapshot> currentRemote,
+  ) async {
     final changes = <FileChange>[];
     final dbSnapshots = await _db.getSnapshotsByTask(task.id);
 
@@ -81,115 +90,108 @@ class FileScannerService {
       final history = historyMap[local.relativePath];
       if (history == null) {
         // 新增文件
-        changes.add(FileChange(
-          taskId: task.id,
-          relativePath: local.relativePath,
-          localPath: local.absolutePath,
-          remotePath: '',
-          changeType: ChangeType.added,
-          operation: SyncOperation.upload,
-          fileSize: local.fileSize,
-          crc32: local.crc32,
-          localSnapshot: local,
-        ));
+        changes.add(
+          FileChange(
+            taskId: task.id,
+            relativePath: local.relativePath,
+            localPath: local.absolutePath,
+            remotePath: '',
+            changeType: ChangeType.added,
+            operation: SyncOperation.upload,
+            fileSize: local.fileSize,
+            crc32: local.crc32,
+            localSnapshot: local,
+          ),
+        );
       } else if (!local.isSameAs(history)) {
         // 修改文件
-        changes.add(FileChange(
-          taskId: task.id,
-          relativePath: local.relativePath,
-          localPath: local.absolutePath,
-          remotePath: '',
-          changeType: ChangeType.modified,
-          operation: SyncOperation.upload,
-          fileSize: local.fileSize,
-          crc32: local.crc32,
-          localSnapshot: local,
-          remoteSnapshot: remoteMap[local.relativePath],
-        ));
+        changes.add(
+          FileChange(
+            taskId: task.id,
+            relativePath: local.relativePath,
+            localPath: local.absolutePath,
+            remotePath: '',
+            changeType: ChangeType.modified,
+            operation: SyncOperation.upload,
+            fileSize: local.fileSize,
+            crc32: local.crc32,
+            localSnapshot: local,
+            remoteSnapshot: remoteMap[local.relativePath],
+          ),
+        );
       }
     }
 
     // 检测本地删除
     for (final history in historyMap.values) {
       if (!localMap.containsKey(history.relativePath) && !history.isDirectory) {
-        changes.add(FileChange(
-          taskId: task.id,
-          relativePath: history.relativePath,
-          localPath: history.absolutePath,
-          remotePath: '',
-          changeType: ChangeType.deleted,
-          operation: SyncOperation.delete,
-          localSnapshot: history,
-        ));
+        changes.add(
+          FileChange(
+            taskId: task.id,
+            relativePath: history.relativePath,
+            localPath: history.absolutePath,
+            remotePath: '',
+            changeType: ChangeType.deleted,
+            operation: SyncOperation.delete,
+            localSnapshot: history,
+          ),
+        );
       }
     }
 
-    // 检测远端变更（双向同步时）
-    if (task.syncDirection == SyncDirection.bidirectional ||
-        task.syncDirection == SyncDirection.mirror) {
+    // 检测远端变更（除仅本地模式外都按双向同步处理）
+    if (task.syncDirection != SyncDirection.localOnly) {
       for (final remote in currentRemote) {
         final history = historyMap[remote.relativePath];
         if (history != null && !remote.isSameAs(history)) {
           if (localMap.containsKey(remote.relativePath)) {
             // 冲突：本地和远端都修改了
-            changes.add(FileChange(
-              taskId: task.id,
-              relativePath: remote.relativePath,
-              localPath: localMap[remote.relativePath]?.absolutePath ?? '',
-              remotePath: remote.absolutePath,
-              changeType: ChangeType.modified,
-              operation: SyncOperation.conflict,
-              fileSize: remote.fileSize,
-              crc32: remote.crc32,
-              localSnapshot: localMap[remote.relativePath],
-              remoteSnapshot: remote,
-            ));
+            changes.add(
+              FileChange(
+                taskId: task.id,
+                relativePath: remote.relativePath,
+                localPath: localMap[remote.relativePath]?.absolutePath ?? '',
+                remotePath: remote.absolutePath,
+                changeType: ChangeType.modified,
+                operation: SyncOperation.conflict,
+                fileSize: remote.fileSize,
+                crc32: remote.crc32,
+                localSnapshot: localMap[remote.relativePath],
+                remoteSnapshot: remote,
+              ),
+            );
           } else {
             // 远端修改，本地无此文件
-            changes.add(FileChange(
-              taskId: task.id,
-              relativePath: remote.relativePath,
-              localPath: '',
-              remotePath: remote.absolutePath,
-              changeType: ChangeType.modified,
-              operation: SyncOperation.download,
-              fileSize: remote.fileSize,
-              crc32: remote.crc32,
-              remoteSnapshot: remote,
-            ));
+            changes.add(
+              FileChange(
+                taskId: task.id,
+                relativePath: remote.relativePath,
+                localPath: '',
+                remotePath: remote.absolutePath,
+                changeType: ChangeType.modified,
+                operation: SyncOperation.download,
+                fileSize: remote.fileSize,
+                crc32: remote.crc32,
+                remoteSnapshot: remote,
+              ),
+            );
           }
         }
         if (history == null && !localMap.containsKey(remote.relativePath)) {
           // 远端新增
-          changes.add(FileChange(
-            taskId: task.id,
-            relativePath: remote.relativePath,
-            localPath: '',
-            remotePath: remote.absolutePath,
-            changeType: ChangeType.added,
-            operation: SyncOperation.download,
-            fileSize: remote.fileSize,
-            crc32: remote.crc32,
-            remoteSnapshot: remote,
-          ));
-        }
-      }
-
-      // 远端删除
-      for (final history in historyMap.values) {
-        if (!remoteMap.containsKey(history.relativePath) &&
-            !history.isDirectory) {
-          if (task.syncDirection == SyncDirection.mirror) {
-            changes.add(FileChange(
+          changes.add(
+            FileChange(
               taskId: task.id,
-              relativePath: history.relativePath,
-              localPath: history.absolutePath,
-              remotePath: '',
-              changeType: ChangeType.deleted,
-              operation: SyncOperation.delete,
-              localSnapshot: history,
-            ));
-          }
+              relativePath: remote.relativePath,
+              localPath: '',
+              remotePath: remote.absolutePath,
+              changeType: ChangeType.added,
+              operation: SyncOperation.download,
+              fileSize: remote.fileSize,
+              crc32: remote.crc32,
+              remoteSnapshot: remote,
+            ),
+          );
         }
       }
     }
@@ -199,7 +201,9 @@ class FileScannerService {
 
   /// 保存快照到数据库
   Future<void> saveSnapshots(
-      String taskId, List<FileSnapshot> snapshots) async {
+    String taskId,
+    List<FileSnapshot> snapshots,
+  ) async {
     await _db.deleteSnapshotsByTask(taskId);
     final maps = snapshots.map((s) => s.toMap()).toList();
     await _db.insertSnapshotsBatch(maps);
