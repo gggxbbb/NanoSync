@@ -1,7 +1,9 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import '../../core/constants/enums.dart';
+import '../../core/theme/app_theme.dart';
 import '../../data/models/remote_connection.dart';
 import '../../data/services/remote_connection_manager.dart';
+import '../../shared/widgets/components/safe_combo_box.dart';
 import '../../l10n/l10n.dart';
 
 class RemoteConnectionsPage extends StatefulWidget {
@@ -37,6 +39,8 @@ class _RemoteConnectionsPageState extends State<RemoteConnectionsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = FluentTheme.of(context).brightness == Brightness.dark;
+
     return ScaffoldPage(
       header: PageHeader(
         title: Text(context.l10n.remoteConnectionsPageTitle),
@@ -58,11 +62,17 @@ class _RemoteConnectionsPageState extends State<RemoteConnectionsPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(FluentIcons.server, size: 64),
+                  Icon(
+                    FluentIcons.server,
+                    size: 64,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     context.l10n.noRemoteConnectionsConfigured,
-                    style: FluentTheme.of(context).typography.subtitle,
+                    style: AppStyles.textStyleSubtitle.copyWith(
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   FilledButton(
@@ -193,6 +203,8 @@ class _ConnectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = FluentTheme.of(context).brightness == Brightness.dark;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -203,6 +215,7 @@ class _ConnectionCard extends StatelessWidget {
                   ? FluentIcons.server
                   : FluentIcons.cloud,
               size: 32,
+              color: isDark ? Colors.white : Colors.black,
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -211,16 +224,22 @@ class _ConnectionCard extends StatelessWidget {
                 children: [
                   Text(
                     connection.name,
-                    style: FluentTheme.of(context).typography.subtitle,
+                    style: AppStyles.textStyleSubtitle.copyWith(
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
                   ),
                   Text(
                     connection.displayAddress,
-                    style: FluentTheme.of(context).typography.caption,
+                    style: AppStyles.textStyleCaption.copyWith(
+                      color: AppStyles.lightTextSecondary(isDark),
+                    ),
                   ),
                   if (connection.username.isNotEmpty)
                     Text(
                       'User: ${connection.username}',
-                      style: FluentTheme.of(context).typography.caption,
+                      style: AppStyles.textStyleCaption.copyWith(
+                        color: AppStyles.lightTextSecondary(isDark),
+                      ),
                     ),
                 ],
               ),
@@ -302,7 +321,7 @@ class _AddEditConnectionDialogState extends State<_AddEditConnectionDialog> {
             const SizedBox(height: 12),
             InfoLabel(
               label: 'Protocol',
-              child: ComboBox<RemoteProtocol>(
+              child: SafeComboBox<RemoteProtocol>(
                 value: _protocol,
                 isExpanded: true,
                 items: const [

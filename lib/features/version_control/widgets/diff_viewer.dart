@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../data/services/vc_engine.dart';
 
 class DiffViewer extends StatefulWidget {
@@ -26,21 +27,30 @@ class _DiffViewerState extends State<DiffViewer> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = FluentTheme.of(context).brightness == Brightness.dark;
+
     if (widget.diffs.isEmpty) {
-      return const Center(child: Text('无可显示的差异'));
+      return Center(
+        child: Text(
+          '无可显示的差异',
+          style: AppStyles.textStyleBody.copyWith(
+            color: AppStyles.lightTextSecondary(isDark),
+          ),
+        ),
+      );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildToolbar(),
+        _buildToolbar(isDark),
         const SizedBox(height: 8),
         Expanded(
           child: ListView.builder(
             itemCount: widget.diffs.length,
             itemBuilder: (context, index) {
               final diff = widget.diffs[index];
-              return _buildFileDiffCard(diff);
+              return _buildFileDiffCard(diff, isDark);
             },
           ),
         ),
@@ -48,12 +58,22 @@ class _DiffViewerState extends State<DiffViewer> {
     );
   }
 
-  Widget _buildToolbar() {
+  Widget _buildToolbar(bool isDark) {
     return Row(
       children: [
-        Text('共 ${widget.diffs.length} 个文件差异'),
+        Text(
+          '共 ${widget.diffs.length} 个文件差异',
+          style: AppStyles.textStyleBody.copyWith(
+            color: isDark ? Colors.white : Colors.black,
+          ),
+        ),
         const Spacer(),
-        Text(_sideBySide ? '并排模式' : '统一模式'),
+        Text(
+          _sideBySide ? '并排模式' : '统一模式',
+          style: AppStyles.textStyleBody.copyWith(
+            color: AppStyles.lightTextSecondary(isDark),
+          ),
+        ),
         const SizedBox(width: 8),
         ToggleSwitch(
           checked: _sideBySide,
@@ -63,7 +83,7 @@ class _DiffViewerState extends State<DiffViewer> {
     );
   }
 
-  Widget _buildFileDiffCard(VcFileDiff diff) {
+  Widget _buildFileDiffCard(VcFileDiff diff, bool isDark) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Card(
@@ -76,12 +96,16 @@ class _DiffViewerState extends State<DiffViewer> {
                 Expanded(
                   child: Text(
                     diff.relativePath,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: AppStyles.textStyleButton.copyWith(
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
                   ),
                 ),
                 Text(
                   '+${diff.additions} -${diff.deletions}',
-                  style: TextStyle(color: Colors.grey[110]),
+                  style: AppStyles.textStyleCaption.copyWith(
+                    color: AppStyles.lightTextSecondary(isDark),
+                  ),
                 ),
               ],
             ),
@@ -90,41 +114,50 @@ class _DiffViewerState extends State<DiffViewer> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[80]),
+                  border: Border.all(color: AppStyles.borderColor(isDark)),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Text('二进制文件，暂不支持文本差异预览'),
+                child: Text(
+                  '二进制文件，暂不支持文本差异预览',
+                  style: AppStyles.textStyleBody.copyWith(
+                    color: AppStyles.lightTextSecondary(isDark),
+                  ),
+                ),
               )
             else if (_sideBySide)
-              _buildSideBySideDiff(diff)
+              _buildSideBySideDiff(diff, isDark)
             else
-              _buildUnifiedDiff(diff),
+              _buildUnifiedDiff(diff, isDark),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildUnifiedDiff(VcFileDiff diff) {
+  Widget _buildUnifiedDiff(VcFileDiff diff, bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final hunk in diff.hunks) ...[
           Container(
-            color: Colors.grey[30],
+            color: isDark ? Colors.grey[80] : Colors.grey[30],
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Text(
               '@@ -${hunk.oldStart},${hunk.oldCount} +${hunk.newStart},${hunk.newCount} @@',
-              style: const TextStyle(fontFamily: 'Consolas', fontSize: 12),
+              style: TextStyle(
+                fontFamily: 'Consolas',
+                fontSize: 12,
+                color: isDark ? Colors.grey[100] : Colors.grey[130],
+              ),
             ),
           ),
-          for (final line in hunk.lines) _buildUnifiedLine(line),
+          for (final line in hunk.lines) _buildUnifiedLine(line, isDark),
         ],
       ],
     );
   }
 
-  Widget _buildUnifiedLine(VcDiffLine line) {
+  Widget _buildUnifiedLine(VcDiffLine line, bool isDark) {
     return Container(
       color: _lineBackgroundColor(line.type),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -136,7 +169,10 @@ class _DiffViewerState extends State<DiffViewer> {
             child: Text(
               line.oldLineNumber > 0 ? '${line.oldLineNumber}' : '',
               textAlign: TextAlign.right,
-              style: TextStyle(fontFamily: 'Consolas', color: Colors.grey[110]),
+              style: TextStyle(
+                fontFamily: 'Consolas',
+                color: AppStyles.lightTextSecondary(isDark),
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -145,7 +181,10 @@ class _DiffViewerState extends State<DiffViewer> {
             child: Text(
               line.newLineNumber > 0 ? '${line.newLineNumber}' : '',
               textAlign: TextAlign.right,
-              style: TextStyle(fontFamily: 'Consolas', color: Colors.grey[110]),
+              style: TextStyle(
+                fontFamily: 'Consolas',
+                color: AppStyles.lightTextSecondary(isDark),
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -153,13 +192,20 @@ class _DiffViewerState extends State<DiffViewer> {
             width: 16,
             child: Text(
               _linePrefix(line.type),
-              style: TextStyle(fontFamily: 'Consolas', color: Colors.grey[120]),
+              style: TextStyle(
+                fontFamily: 'Consolas',
+                color: AppStyles.lightTextSecondary(isDark),
+              ),
             ),
           ),
           Expanded(
             child: SelectableText(
               line.content,
-              style: const TextStyle(fontFamily: 'Consolas', fontSize: 12),
+              style: TextStyle(
+                fontFamily: 'Consolas',
+                fontSize: 12,
+                color: isDark ? Colors.white : Colors.black,
+              ),
             ),
           ),
         ],
@@ -167,7 +213,7 @@ class _DiffViewerState extends State<DiffViewer> {
     );
   }
 
-  Widget _buildSideBySideDiff(VcFileDiff diff) {
+  Widget _buildSideBySideDiff(VcFileDiff diff, bool isDark) {
     final rows = <_SideBySideRow>[];
 
     for (final hunk in diff.hunks) {
@@ -185,19 +231,23 @@ class _DiffViewerState extends State<DiffViewer> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: rows.map(_buildSideBySideRow).toList(),
+      children: rows.map((row) => _buildSideBySideRow(row, isDark)).toList(),
     );
   }
 
-  Widget _buildSideBySideRow(_SideBySideRow row) {
+  Widget _buildSideBySideRow(_SideBySideRow row, bool isDark) {
     if (row.hunk != null) {
       final h = row.hunk!;
       return Container(
-        color: Colors.grey[30],
+        color: isDark ? Colors.grey[80] : Colors.grey[30],
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         child: Text(
           '@@ -${h.oldStart},${h.oldCount} +${h.newStart},${h.newCount} @@',
-          style: const TextStyle(fontFamily: 'Consolas', fontSize: 12),
+          style: TextStyle(
+            fontFamily: 'Consolas',
+            fontSize: 12,
+            color: isDark ? Colors.grey[100] : Colors.grey[130],
+          ),
         ),
       );
     }
@@ -205,14 +255,20 @@ class _DiffViewerState extends State<DiffViewer> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: _buildSideCell(row.left, isLeft: true)),
-        Container(width: 1, color: Colors.grey[70]),
-        Expanded(child: _buildSideCell(row.right, isLeft: false)),
+        Expanded(child: _buildSideCell(row.left, isLeft: true, isDark: isDark)),
+        Container(width: 1, color: AppStyles.borderColor(isDark)),
+        Expanded(
+          child: _buildSideCell(row.right, isLeft: false, isDark: isDark),
+        ),
       ],
     );
   }
 
-  Widget _buildSideCell(VcDiffLine? line, {required bool isLeft}) {
+  Widget _buildSideCell(
+    VcDiffLine? line, {
+    required bool isLeft,
+    required bool isDark,
+  }) {
     if (line == null) {
       return Container(height: 22, color: Colors.transparent);
     }
@@ -230,14 +286,21 @@ class _DiffViewerState extends State<DiffViewer> {
             child: Text(
               lineNumber > 0 ? '$lineNumber' : '',
               textAlign: TextAlign.right,
-              style: TextStyle(fontFamily: 'Consolas', color: Colors.grey[110]),
+              style: TextStyle(
+                fontFamily: 'Consolas',
+                color: AppStyles.lightTextSecondary(isDark),
+              ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: SelectableText(
               line.content,
-              style: const TextStyle(fontFamily: 'Consolas', fontSize: 12),
+              style: TextStyle(
+                fontFamily: 'Consolas',
+                fontSize: 12,
+                color: isDark ? Colors.white : Colors.black,
+              ),
             ),
           ),
         ],

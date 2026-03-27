@@ -1,8 +1,10 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import '../../core/theme/app_theme.dart';
 import '../../data/models/remote_connection.dart';
 import '../../data/services/new_sync_engine.dart';
 import '../../data/services/repository_manager.dart';
 import '../../data/services/remote_connection_manager.dart';
+import '../../shared/widgets/components/safe_combo_box.dart';
 import '../../l10n/l10n.dart';
 
 class RepositoryListPage extends StatefulWidget {
@@ -63,6 +65,8 @@ class _RepositoryListPageState extends State<RepositoryListPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = FluentTheme.of(context).brightness == Brightness.dark;
+
     return ScaffoldPage(
       header: PageHeader(
         title: Text(context.l10n.repositoriesPageTitle),
@@ -109,9 +113,9 @@ class _RepositoryListPageState extends State<RepositoryListPage> {
                                 _searchQuery.isEmpty
                                     ? context.l10n.noRepositoriesRegistered
                                     : context.l10n.noRepositoriesMatch,
-                                style: FluentTheme.of(
-                                  context,
-                                ).typography.subtitle,
+                                style: AppStyles.textStyleSubtitle.copyWith(
+                                  color: isDark ? Colors.white : Colors.black,
+                                ),
                               ),
                               const SizedBox(height: 8),
                               if (_searchQuery.isEmpty)
@@ -201,12 +205,18 @@ class _RepositoryCardState extends State<_RepositoryCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = FluentTheme.of(context).brightness == Brightness.dark;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Row(
           children: [
-            const Icon(FluentIcons.folder, size: 32),
+            Icon(
+              FluentIcons.folder,
+              size: 32,
+              color: isDark ? Colors.white : Colors.black,
+            ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
@@ -214,11 +224,15 @@ class _RepositoryCardState extends State<_RepositoryCard> {
                 children: [
                   Text(
                     widget.repository.name,
-                    style: FluentTheme.of(context).typography.subtitle,
+                    style: AppStyles.textStyleSubtitle.copyWith(
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
                   ),
                   Text(
                     widget.repository.localPath,
-                    style: FluentTheme.of(context).typography.caption,
+                    style: AppStyles.textStyleCaption.copyWith(
+                      color: AppStyles.lightTextSecondary(isDark),
+                    ),
                   ),
                   if (_ahead > 0 || _behind > 0)
                     Padding(
@@ -232,9 +246,23 @@ class _RepositoryCardState extends State<_RepositoryCard> {
                                 message: context.l10n.commitsAhead(_ahead),
                                 child: Row(
                                   children: [
-                                    const Icon(FluentIcons.upload, size: 14),
+                                    Icon(
+                                      FluentIcons.upload,
+                                      size: 14,
+                                      color: AppStyles.lightTextSecondary(
+                                        isDark,
+                                      ),
+                                    ),
                                     const SizedBox(width: 4),
-                                    Text('$_ahead'),
+                                    Text(
+                                      '$_ahead',
+                                      style: AppStyles.textStyleCaption
+                                          .copyWith(
+                                            color: AppStyles.lightTextSecondary(
+                                              isDark,
+                                            ),
+                                          ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -244,9 +272,20 @@ class _RepositoryCardState extends State<_RepositoryCard> {
                               message: context.l10n.commitsBehind(_behind),
                               child: Row(
                                 children: [
-                                  const Icon(FluentIcons.download, size: 14),
+                                  Icon(
+                                    FluentIcons.download,
+                                    size: 14,
+                                    color: AppStyles.lightTextSecondary(isDark),
+                                  ),
                                   const SizedBox(width: 4),
-                                  Text('$_behind'),
+                                  Text(
+                                    '$_behind',
+                                    style: AppStyles.textStyleCaption.copyWith(
+                                      color: AppStyles.lightTextSecondary(
+                                        isDark,
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -361,10 +400,11 @@ class _AddRepositoryDialogState extends State<_AddRepositoryDialog> {
                 final connections = snapshot.data ?? [];
                 return InfoLabel(
                   label: context.l10n.connection,
-                  child: ComboBox<String?>(
+                  child: SafeComboBox<String?>(
                     value: _selectedConnection,
                     isExpanded: true,
                     placeholder: Text(context.l10n.selectConnection),
+                    emptyPlaceholder: context.l10n.selectConnection,
                     items: connections
                         .map(
                           (c) => ComboBoxItem(
@@ -481,10 +521,11 @@ class _CloneRepositoryDialogState extends State<_CloneRepositoryDialog> {
                 final connections = snapshot.data ?? [];
                 return InfoLabel(
                   label: 'Remote Connection',
-                  child: ComboBox<String?>(
+                  child: SafeComboBox<String?>(
                     value: _selectedConnection,
                     isExpanded: true,
                     placeholder: const Text('Select connection...'),
+                    emptyPlaceholder: 'Select connection...',
                     items: connections
                         .map(
                           (c) => ComboBoxItem(

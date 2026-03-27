@@ -5,6 +5,7 @@ import '../../data/models/automation_models.dart';
 import '../../data/services/automation_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/providers/vc_repository_provider.dart';
+import '../../shared/widgets/components/safe_combo_box.dart';
 import '../../l10n/l10n.dart';
 import 'package:uuid/uuid.dart';
 
@@ -200,34 +201,33 @@ class _AutomationPageState extends State<AutomationPage> {
               children: [
                 const Icon(FluentIcons.folder_open, size: 16),
                 const SizedBox(width: 8),
-                const Text('选择仓库: '),
+                Text(
+                  '选择仓库: ',
+                  style: AppStyles.textStyleBody.copyWith(
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: vcProvider.repositories.isEmpty
-                      ? Text(
-                          '暂无已注册仓库，请先在"仓库"页面导入仓库',
-                          style: AppStyles.textStyleBody.copyWith(
-                            color: AppStyles.lightTextSecondary(isDark),
+                  child: SafeComboBox<String>(
+                    value: _selectedRepositoryId,
+                    isExpanded: true,
+                    emptyPlaceholder: '暂无已注册仓库，请先在"仓库"页面导入仓库',
+                    items: vcProvider.repositories
+                        .map(
+                          (repo) => ComboBoxItem(
+                            value: repo.id,
+                            child: Text(repo.name),
                           ),
                         )
-                      : ComboBox<String>(
-                          value: _selectedRepositoryId,
-                          isExpanded: true,
-                          items: vcProvider.repositories
-                              .map(
-                                (repo) => ComboBoxItem(
-                                  value: repo.id,
-                                  child: Text(repo.name),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() => _selectedRepositoryId = value);
-                              _loadRules();
-                            }
-                          },
-                        ),
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _selectedRepositoryId = value);
+                        _loadRules();
+                      }
+                    },
+                  ),
                 ),
               ],
             ),
@@ -337,6 +337,11 @@ class _AutomationPageState extends State<AutomationPage> {
                             style: AppStyles.textStyleCaption.copyWith(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
+                              color: rule.enabled
+                                  ? Colors.teal.dark
+                                  : (isDark
+                                        ? Colors.grey[100]
+                                        : Colors.grey[130]),
                             ),
                           ),
                         ),
@@ -348,11 +353,13 @@ class _AutomationPageState extends State<AutomationPage> {
                         _buildBadge(
                           '触发: $triggerLabel',
                           Colors.blue.withAlpha(50),
+                          isDark,
                         ),
                         const SizedBox(width: 8),
                         _buildBadge(
                           '操作: $actionLabel',
                           Colors.green.withAlpha(50),
+                          isDark,
                         ),
                       ],
                     ),
@@ -423,7 +430,7 @@ class _AutomationPageState extends State<AutomationPage> {
     );
   }
 
-  Widget _buildBadge(String text, Color bgColor) {
+  Widget _buildBadge(String text, Color bgColor, bool isDark) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -432,7 +439,10 @@ class _AutomationPageState extends State<AutomationPage> {
       ),
       child: Text(
         text,
-        style: AppStyles.textStyleCaption.copyWith(fontSize: 10),
+        style: AppStyles.textStyleCaption.copyWith(
+          fontSize: 10,
+          color: isDark ? Colors.white : Colors.black,
+        ),
       ),
     );
   }
@@ -627,7 +637,12 @@ class _AutomationRuleDialogState extends State<_AutomationRuleDialog> {
     final isDark = FluentTheme.of(context).brightness == Brightness.dark;
 
     return ContentDialog(
-      title: Text(widget.initialRule == null ? '创建自动化规则' : '编辑自动化规则'),
+      title: Text(
+        widget.initialRule == null ? '创建自动化规则' : '编辑自动化规则',
+        style: AppStyles.textStyleSubtitle.copyWith(
+          color: isDark ? Colors.white : Colors.black,
+        ),
+      ),
       constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
       content: SingleChildScrollView(
         child: Column(
@@ -635,13 +650,23 @@ class _AutomationRuleDialogState extends State<_AutomationRuleDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 规则名称
-            Text('规则名称', style: AppStyles.textStyleCaption),
+            Text(
+              '规则名称',
+              style: AppStyles.textStyleCaption.copyWith(
+                color: isDark ? Colors.grey[100] : Colors.grey[140],
+              ),
+            ),
             const SizedBox(height: 6),
             TextBox(controller: _nameController, placeholder: '例如: 每日自动提交'),
             const SizedBox(height: 16),
 
             // 触发方式
-            Text('触发方式', style: AppStyles.textStyleCaption),
+            Text(
+              '触发方式',
+              style: AppStyles.textStyleCaption.copyWith(
+                color: isDark ? Colors.grey[100] : Colors.grey[140],
+              ),
+            ),
             const SizedBox(height: 6),
             Row(
               children: [
@@ -679,7 +704,12 @@ class _AutomationRuleDialogState extends State<_AutomationRuleDialog> {
 
             // 触发条件配置
             if (_triggerType == AutomationTriggerType.timeBased) ...[
-              Text('间隔时间 (分钟)', style: AppStyles.textStyleCaption),
+              Text(
+                '间隔时间 (分钟)',
+                style: AppStyles.textStyleCaption.copyWith(
+                  color: isDark ? Colors.grey[100] : Colors.grey[140],
+                ),
+              ),
               const SizedBox(height: 6),
               NumberBox(
                 value: _intervalMinutes.toDouble(),
@@ -733,7 +763,12 @@ class _AutomationRuleDialogState extends State<_AutomationRuleDialog> {
                 ],
               ),
               const SizedBox(height: 8),
-              Text('防抖延迟 (秒)', style: AppStyles.textStyleCaption),
+              Text(
+                '防抖延迟 (秒)',
+                style: AppStyles.textStyleCaption.copyWith(
+                  color: isDark ? Colors.grey[100] : Colors.grey[140],
+                ),
+              ),
               const SizedBox(height: 6),
               NumberBox(
                 value: _debounceSeconds.toDouble(),
@@ -774,12 +809,17 @@ class _AutomationRuleDialogState extends State<_AutomationRuleDialog> {
                 children: [
                   Row(
                     children: [
-                      const Icon(FluentIcons.message, size: 16),
+                      Icon(
+                        FluentIcons.message,
+                        size: 16,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         '提交信息模板',
                         style: AppStyles.textStyleButton.copyWith(
                           fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white : Colors.black,
                         ),
                       ),
                     ],
@@ -795,7 +835,12 @@ class _AutomationRuleDialogState extends State<_AutomationRuleDialog> {
                   const SizedBox(height: 12),
 
                   // 可用变量
-                  Text('可用变量 (点击插入):', style: AppStyles.textStyleCaption),
+                  Text(
+                    '可用变量 (点击插入):',
+                    style: AppStyles.textStyleCaption.copyWith(
+                      color: isDark ? Colors.grey[100] : Colors.grey[140],
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   Wrap(
                     spacing: 4,
@@ -846,7 +891,10 @@ class _AutomationRuleDialogState extends State<_AutomationRuleDialog> {
                         const SizedBox(height: 4),
                         Text(
                           _getPreviewText(),
-                          style: AppStyles.textStyleBody.copyWith(fontSize: 12),
+                          style: AppStyles.textStyleBody.copyWith(
+                            fontSize: 12,
+                            color: isDark ? Colors.white : Colors.black,
+                          ),
                         ),
                       ],
                     ),
@@ -857,7 +905,12 @@ class _AutomationRuleDialogState extends State<_AutomationRuleDialog> {
             const SizedBox(height: 16),
 
             // 常用模板
-            Text('常用模板:', style: AppStyles.textStyleCaption),
+            Text(
+              '常用模板:',
+              style: AppStyles.textStyleCaption.copyWith(
+                color: isDark ? Colors.grey[100] : Colors.grey[140],
+              ),
+            ),
             const SizedBox(height: 6),
             Wrap(
               spacing: 8,

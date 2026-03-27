@@ -4,6 +4,7 @@ import '../../data/models/vc_models.dart';
 import '../../data/services/vc_engine.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/providers/vc_repository_provider.dart';
+import '../../shared/widgets/components/safe_combo_box.dart';
 import 'widgets/diff_viewer.dart';
 import 'package:flutter/material.dart' show ScaffoldMessenger, SnackBar;
 import '../../l10n/l10n.dart';
@@ -278,53 +279,54 @@ class _VersionControlPageState extends State<VersionControlPage> {
       ),
       child: Row(
         children: [
-          const Icon(FluentIcons.folder_open, size: 16),
+          Icon(
+            FluentIcons.folder_open,
+            size: 16,
+            color: isDark ? Colors.white : Colors.black,
+          ),
           const SizedBox(width: 8),
-          Text('选择仓库:', style: AppStyles.textStyleBody),
+          Text(
+            '选择仓库:',
+            style: AppStyles.textStyleBody.copyWith(
+              color: isDark ? Colors.white : Colors.black,
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
-            child: vcProvider.repositories.isEmpty
-                ? Text(
-                    '暂无已注册仓库',
-                    style: AppStyles.textStyleBody.copyWith(
-                      color: AppStyles.lightTextSecondary(isDark),
+            child: SafeComboBox<String>(
+              value: vcProvider.currentRepository?.id,
+              isExpanded: true,
+              emptyPlaceholder: '暂无已注册仓库',
+              items: vcProvider.repositories
+                  .map(
+                    (repo) => ComboBoxItem(
+                      value: repo.id,
+                      child: Row(
+                        children: [
+                          const Icon(FluentIcons.git_graph, size: 14),
+                          const SizedBox(width: 8),
+                          Text(repo.name),
+                          if (repo.localPath.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              '(${repo.localPath})',
+                              style: AppStyles.textStyleCaption.copyWith(
+                                color: AppStyles.lightTextSecondary(isDark),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   )
-                : ComboBox<String>(
-                    value: vcProvider.currentRepository?.id,
-                    isExpanded: true,
-                    items: vcProvider.repositories
-                        .map(
-                          (repo) => ComboBoxItem(
-                            value: repo.id,
-                            child: Row(
-                              children: [
-                                const Icon(FluentIcons.git_graph, size: 14),
-                                const SizedBox(width: 8),
-                                Text(repo.name),
-                                if (repo.localPath.isNotEmpty) ...[
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '(${repo.localPath})',
-                                    style: AppStyles.textStyleCaption.copyWith(
-                                      color: AppStyles.lightTextSecondary(
-                                        isDark,
-                                      ),
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        _bindRepository(value);
-                      }
-                    },
-                  ),
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  _bindRepository(value);
+                }
+              },
+            ),
           ),
           if (vcProvider.repositories.isNotEmpty) ...[
             const SizedBox(width: 12),
@@ -503,6 +505,7 @@ class _VersionControlPageState extends State<VersionControlPage> {
                   title,
                   style: AppStyles.textStyleButton.copyWith(
                     fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : Colors.black,
                   ),
                 ),
                 const Spacer(),
@@ -580,7 +583,13 @@ class _VersionControlPageState extends State<VersionControlPage> {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(entry.relativePath, overflow: TextOverflow.ellipsis),
+              child: Text(
+                entry.relativePath,
+                overflow: TextOverflow.ellipsis,
+                style: AppStyles.textStyleBody.copyWith(
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+              ),
             ),
             if (staged)
               IconButton(
@@ -623,7 +632,13 @@ class _VersionControlPageState extends State<VersionControlPage> {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(change.relativePath, overflow: TextOverflow.ellipsis),
+              child: Text(
+                change.relativePath,
+                overflow: TextOverflow.ellipsis,
+                style: AppStyles.textStyleBody.copyWith(
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+              ),
             ),
             IconButton(
               icon: const Icon(FluentIcons.add, size: 14),
@@ -674,7 +689,12 @@ class _VersionControlPageState extends State<VersionControlPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('提交', style: AppStyles.textStyleSubtitle),
+          Text(
+            '提交',
+            style: AppStyles.textStyleSubtitle.copyWith(
+              color: isDark ? Colors.white : Colors.black,
+            ),
+          ),
           const SizedBox(height: 16),
           TextFormBox(
             placeholder: '提交信息',
@@ -707,7 +727,12 @@ class _VersionControlPageState extends State<VersionControlPage> {
           ),
           const Spacer(),
           const Divider(),
-          Text('快捷操作', style: AppStyles.textStyleCaption),
+          Text(
+            '快捷操作',
+            style: AppStyles.textStyleCaption.copyWith(
+              color: isDark ? Colors.grey[100] : Colors.grey[140],
+            ),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -795,7 +820,12 @@ class _VersionControlPageState extends State<VersionControlPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(commit.shortMessage, style: AppStyles.textStyleButton),
+                  Text(
+                    commit.shortMessage,
+                    style: AppStyles.textStyleButton.copyWith(
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
@@ -864,6 +894,7 @@ class _VersionControlPageState extends State<VersionControlPage> {
                 '分支列表',
                 style: AppStyles.textStyleButton.copyWith(
                   fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : Colors.black,
                 ),
               ),
               const Spacer(),
@@ -920,6 +951,7 @@ class _VersionControlPageState extends State<VersionControlPage> {
                                 fontWeight: isCurrentBranch
                                     ? FontWeight.w600
                                     : FontWeight.normal,
+                                color: isDark ? Colors.white : Colors.black,
                               ),
                             ),
                           ),
@@ -966,6 +998,7 @@ class _VersionControlPageState extends State<VersionControlPage> {
                 'Stash 列表',
                 style: AppStyles.textStyleButton.copyWith(
                   fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : Colors.black,
                 ),
               ),
               const Spacer(),
@@ -1022,6 +1055,7 @@ class _VersionControlPageState extends State<VersionControlPage> {
                                 stash.shortId,
                                 style: AppStyles.textStyleCaption.copyWith(
                                   fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white : Colors.black,
                                 ),
                               ),
                             ),
@@ -1033,7 +1067,9 @@ class _VersionControlPageState extends State<VersionControlPage> {
                               children: [
                                 Text(
                                   stash.message,
-                                  style: AppStyles.textStyleBody,
+                                  style: AppStyles.textStyleBody.copyWith(
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
                                 ),
                                 Text(
                                   '${stash.fileCount} 文件 | ${_formatTime(stash.createdAt)}',
@@ -1097,6 +1133,7 @@ class _VersionControlPageState extends State<VersionControlPage> {
                 '冲突文件 (${_conflicts.length})',
                 style: AppStyles.textStyleButton.copyWith(
                   fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : Colors.black,
                 ),
               ),
               const Spacer(),
@@ -1143,7 +1180,9 @@ class _VersionControlPageState extends State<VersionControlPage> {
                               children: [
                                 Text(
                                   conflict.relativePath,
-                                  style: AppStyles.textStyleButton,
+                                  style: AppStyles.textStyleButton.copyWith(
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
                                 ),
                                 Text(
                                   '${conflict.markerBlocks} 个冲突块${conflict.isStaged ? ' | 已暂存' : ''}',
