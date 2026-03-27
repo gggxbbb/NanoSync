@@ -420,6 +420,7 @@ impl VcEngine {
     /// 读取对象内容
     fn read_object_content(&self, hash: &str) -> Option<String> {
         if hash.len() < 3 {
+            tracing::debug!("对象哈希长度不足 3 字节: {}", hash);
             return None;
         }
         let object_path = objects_dir(&self.repo_path)
@@ -459,7 +460,9 @@ impl VcEngine {
                 for entry in paths_to_restore {
                     let dest = self.repo_path.join(&entry.path);
                     if !entry.object_hash.is_empty() {
-                        let _ = self.restore_object(&entry.object_hash, &dest);
+                        if let Err(e) = self.restore_object(&entry.object_hash, &dest) {
+                            tracing::warn!("还原文件失败 {}: {}", entry.path, e);
+                        }
                     }
                 }
             }
@@ -512,7 +515,7 @@ impl VcEngine {
             return Err(Error::VersionControl("不能删除默认分支".to_string()));
         }
 
-        sqlx_delete_branch(&self.repo_db, name).await?;
+        self.repo_db.delete_branch(name).await?;
         info!("分支删除成功: {}", name);
         Ok(())
     }

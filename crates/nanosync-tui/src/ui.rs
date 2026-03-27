@@ -231,7 +231,7 @@ fn draw_vc_log(f: &mut Frame, area: Rect, page: &crate::app::VersionControlPage)
                 Style::default()
             };
 
-            let short_id = &commit.id[..8.min(commit.id.len())];
+            let short_id: String = commit.id.chars().take(8).collect();
             let time = commit.timestamp.format("%m-%d %H:%M").to_string();
 
             ListItem::new(Line::from(vec![

@@ -580,10 +580,12 @@ impl ClientHandler {
                 if let Some(repo_id) = cmd.request.repository_id {
                     let repo_db = self.get_repo_db(repo_id).await?;
                     let data = self.log_service.export_logs(Some(&repo_db), &cmd.request).await?;
-                    Ok(serde_json::json!({"success": true, "size": data.len(), "data": base64_encode(&data)}))
+                    let content = String::from_utf8_lossy(&data).to_string();
+                    Ok(serde_json::json!({"success": true, "size": data.len(), "data": content}))
                 } else {
                     let data = self.log_service.export_logs(None, &cmd.request).await?;
-                    Ok(serde_json::json!({"success": true, "size": data.len(), "data": base64_encode(&data)}))
+                    let content = String::from_utf8_lossy(&data).to_string();
+                    Ok(serde_json::json!({"success": true, "size": data.len(), "data": content}))
                 }
             }
             
@@ -622,28 +624,4 @@ impl ClientHandler {
         ).await?;
         Ok(vc)
     }
-}
-
-fn base64_encode(data: &[u8]) -> String {
-    
-    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut result = String::with_capacity((data.len() + 2) / 3 * 4);
-    for chunk in data.chunks(3) {
-        let b0 = chunk[0] as usize;
-        let b1 = if chunk.len() > 1 { chunk[1] as usize } else { 0 };
-        let b2 = if chunk.len() > 2 { chunk[2] as usize } else { 0 };
-        result.push(ALPHABET[(b0 >> 2) & 0x3F] as char);
-        result.push(ALPHABET[((b0 & 0x3) << 4) | (b1 >> 4)] as char);
-        if chunk.len() > 1 {
-            result.push(ALPHABET[((b1 & 0xF) << 2) | (b2 >> 6)] as char);
-        } else {
-            result.push('=');
-        }
-        if chunk.len() > 2 {
-            result.push(ALPHABET[b2 & 0x3F] as char);
-        } else {
-            result.push('=');
-        }
-    }
-    result
 }
