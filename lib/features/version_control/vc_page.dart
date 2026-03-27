@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../shared/providers/vc_repository_provider.dart';
 import '../../shared/widgets/components/safe_combo_box.dart';
 import 'widgets/diff_viewer.dart';
+import 'widgets/file_tree_widget.dart';
 import 'package:flutter/material.dart' show ScaffoldMessenger, SnackBar;
 import '../../l10n/l10n.dart';
 
@@ -405,6 +406,12 @@ class _VersionControlPageState extends State<VersionControlPage> {
           _buildTab(2, '分支', FluentIcons.git_graph, isDark),
           _buildTab(3, '冲突', FluentIcons.warning, isDark),
           _buildTab(4, 'Stash', FluentIcons.archive, isDark),
+          _buildTab(
+            5,
+            context.l10n.fileManagement,
+            FluentIcons.folder_open,
+            isDark,
+          ),
         ],
       ),
     );
@@ -460,6 +467,8 @@ class _VersionControlPageState extends State<VersionControlPage> {
         return _buildConflictsTab(isDark);
       case 4:
         return _buildStashTab(isDark);
+      case 5:
+        return _buildFileManagementTab(isDark);
       default:
         return const SizedBox();
     }
@@ -1118,6 +1127,27 @@ class _VersionControlPageState extends State<VersionControlPage> {
                 ),
         ),
       ],
+    );
+  }
+
+  Widget _buildFileManagementTab(bool isDark) {
+    if (_engine == null) {
+      return Center(
+        child: Text(
+          context.l10n.selectRepositoryFirst,
+          style: AppStyles.textStyleBody.copyWith(
+            color: AppStyles.lightTextSecondary(isDark),
+          ),
+        ),
+      );
+    }
+
+    return FileTreeWidget(
+      engine: _engine!,
+      onRulesChanged: () {
+        // 规则变更后重新加载数据
+        _loadData();
+      },
     );
   }
 

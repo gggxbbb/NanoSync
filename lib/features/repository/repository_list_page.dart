@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/remote_connection.dart';
+import '../../data/models/repository_config.dart';
 import '../../data/services/new_sync_engine.dart';
 import '../../data/services/repository_manager.dart';
 import '../../data/services/remote_connection_manager.dart';
@@ -205,6 +206,55 @@ class _RepositoryCardState extends State<_RepositoryCard> {
     }
   }
 
+  Future<void> _showDeleteDialog() async {
+    final result = await showDialog<_DeleteRepositoryResult>(
+      context: context,
+      builder: (context) =>
+          _DeleteRepositoryDialog(repositoryName: widget.repository.name),
+    );
+
+    if (result != null && mounted) {
+      setState(() => _isLoading = true);
+      try {
+        await RepositoryManager.instance.deleteRepository(
+          widget.repository.id,
+          deleteNanosyncFolder: result.deleteNanosyncFolder,
+        );
+        widget.onRefresh();
+      } catch (e) {
+        if (mounted) {
+          await showDialog(
+            context: context,
+            builder: (context) => ContentDialog(
+              title: Text(context.l10n.error),
+              content: Text('${context.l10n.error}: $e'),
+              actions: [
+                Button(
+                  child: Text(context.l10n.ok),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
+    }
+  }
+
+  Future<void> _showMigrateDialog() async {
+    await showDialog(
+      context: context,
+      builder: (context) => _MigrateRepositoryDialog(
+        repository: widget.repository,
+        onMigrated: widget.onRefresh,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = FluentTheme.of(context).brightness == Brightness.dark;
@@ -333,6 +383,28 @@ class _RepositoryCardState extends State<_RepositoryCard> {
                 },
               ),
             ),
+            const SizedBox(width: 4),
+            // 迁移按钮
+            Tooltip(
+              message: context.l10n.migrateRepository,
+              child: IconButton(
+                icon: Icon(
+                  FluentIcons.move_to_folder,
+                  size: 18,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+                onPressed: _showMigrateDialog,
+              ),
+            ),
+            const SizedBox(width: 4),
+            // 删除按钮
+            Tooltip(
+              message: context.l10n.deleteRepository,
+              child: IconButton(
+                icon: Icon(FluentIcons.delete, size: 18, color: Colors.red),
+                onPressed: _showDeleteDialog,
+              ),
+            ),
             const SizedBox(width: 8),
             if (_isLoading)
               const ProgressRing()
@@ -378,10 +450,14 @@ class _AddRepositoryDialog extends StatefulWidget {
 class _AddRepositoryDialogState extends State<_AddRepositoryDialog> {
   final _pathController = TextEditingController();
   final _nameController = TextEditingController();
-  bool _initialCommit = true;
   String? _selectedConnection;
   final _remotePathController = TextEditingController();
   bool _isLoading = false;
+
+  // 忽略配置
+  final _ignorePatternsController = TextEditingController();
+  final _ignoreExtensionsController = TextEditingController();
+  final _ignoreFoldersController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -430,11 +506,35 @@ class _AddRepositoryDialogState extends State<_AddRepositoryDialog> {
                 placeholder: context.l10n.enterName,
               ),
             ),
-            const SizedBox(height: 12),
-            Checkbox(
-              checked: _initialCommit,
-              onChanged: (v) => setState(() => _initialCommit = v ?? true),
-              content: Text(context.l10n.createInitialCommit),
+            const SizedBox(height: 16),
+            Text(
+              context.l10n.ignoreConfiguration,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            InfoLabel(
+              label: context.l10n.ignorePatterns,
+              child: TextBox(
+                controller: _ignorePatternsController,
+                placeholder: context.l10n.ignorePatternsPlaceholder,
+                maxLines: 2,
+              ),
+            ),
+            const SizedBox(height: 8),
+            InfoLabel(
+              label: context.l10n.ignoreExtensions,
+              child: TextBox(
+                controller: _ignoreExtensionsController,
+                placeholder: context.l10n.ignoreExtensionsPlaceholder,
+              ),
+            ),
+            const SizedBox(height: 8),
+            InfoLabel(
+              label: context.l10n.ignoreFolders,
+              child: TextBox(
+                controller: _ignoreFoldersController,
+                placeholder: context.l10n.ignoreFoldersPlaceholder,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
@@ -497,12 +597,31 @@ class _AddRepositoryDialogState extends State<_AddRepositoryDialog> {
               : () async {
                   setState(() => _isLoading = true);
                   try {
+                    // 构建忽略配置
+                    final ignoreConfig = IgnoreConfig(
+                      patterns: _ignorePatternsController.text
+                          .split(',')
+                          .map((s) => s.trim())
+                          .where((s) => s.isNotEmpty)
+                          .toList(),
+                      extensions: _ignoreExtensionsController.text
+                          .split(',')
+                          .map((s) => s.trim())
+                          .where((s) => s.isNotEmpty)
+                          .toList(),
+                      folders: _ignoreFoldersController.text
+                          .split(',')
+                          .map((s) => s.trim())
+                          .where((s) => s.isNotEmpty)
+                          .toList(),
+                    );
+
                     await RepositoryManager.instance.importExisting(
                       _pathController.text,
                       name: _nameController.text.isEmpty
                           ? null
                           : _nameController.text,
-                      initialCommit: _initialCommit,
+                      ignoreConfig: ignoreConfig,
                       remoteName: _selectedConnection,
                       remotePath: _remotePathController.text.isEmpty
                           ? null
@@ -670,6 +789,235 @@ class _CloneRepositoryDialogState extends State<_CloneRepositoryDialog> {
                           actions: [
                             Button(
                               child: const Text('OK'),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                  } finally {
+                    if (mounted) setState(() => _isLoading = false);
+                  }
+                },
+        ),
+      ],
+    );
+  }
+}
+
+/// 删除仓库结果
+class _DeleteRepositoryResult {
+  final bool deleteNanosyncFolder;
+
+  const _DeleteRepositoryResult({required this.deleteNanosyncFolder});
+}
+
+/// 删除仓库确认对话框
+class _DeleteRepositoryDialog extends StatefulWidget {
+  final String repositoryName;
+
+  const _DeleteRepositoryDialog({required this.repositoryName});
+
+  @override
+  State<_DeleteRepositoryDialog> createState() =>
+      _DeleteRepositoryDialogState();
+}
+
+class _DeleteRepositoryDialogState extends State<_DeleteRepositoryDialog> {
+  bool _deleteNanosyncFolder = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return ContentDialog(
+      title: Text(context.l10n.deleteRepository),
+      constraints: const BoxConstraints(maxWidth: 400),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.l10n.deleteRepositoryConfirm(widget.repositoryName),
+            style: AppStyles.textStyleBody,
+          ),
+          const SizedBox(height: 16),
+          Checkbox(
+            checked: _deleteNanosyncFolder,
+            onChanged: (v) =>
+                setState(() => _deleteNanosyncFolder = v ?? false),
+            content: Text(context.l10n.deleteNanosyncFolder),
+          ),
+          const SizedBox(height: 8),
+          InfoBar(
+            title: Text(context.l10n.notice),
+            content: Text(
+              _deleteNanosyncFolder
+                  ? context.l10n.deleteNanosyncFolderHint
+                  : context.l10n.deleteRepositoryHint,
+            ),
+            severity: _deleteNanosyncFolder
+                ? InfoBarSeverity.error
+                : InfoBarSeverity.warning,
+          ),
+        ],
+      ),
+      actions: [
+        Button(
+          child: Text(context.l10n.cancel),
+          onPressed: () => Navigator.pop(context),
+        ),
+        FilledButton(
+          child: Text(context.l10n.delete),
+          onPressed: () => Navigator.pop(
+            context,
+            _DeleteRepositoryResult(
+              deleteNanosyncFolder: _deleteNanosyncFolder,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 迁移仓库对话框
+class _MigrateRepositoryDialog extends StatefulWidget {
+  final Repository repository;
+  final VoidCallback onMigrated;
+
+  const _MigrateRepositoryDialog({
+    required this.repository,
+    required this.onMigrated,
+  });
+
+  @override
+  State<_MigrateRepositoryDialog> createState() =>
+      _MigrateRepositoryDialogState();
+}
+
+class _MigrateRepositoryDialogState extends State<_MigrateRepositoryDialog> {
+  final _pathController = TextEditingController();
+  double _progress = 0;
+  String _status = '';
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pathController.text = widget.repository.localPath;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ContentDialog(
+      title: Text(context.l10n.migrateRepository),
+      constraints: const BoxConstraints(maxWidth: 500),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InfoLabel(
+              label: context.l10n.currentPath,
+              child: TextBox(
+                readOnly: true,
+                controller: TextEditingController(
+                  text: widget.repository.localPath,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            InfoLabel(
+              label: context.l10n.newPath,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextBox(
+                      controller: _pathController,
+                      placeholder: context.l10n.selectFolder,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Button(
+                    child: Text(context.l10n.browse),
+                    onPressed: () async {
+                      final result = await FilePicker.platform
+                          .getDirectoryPath();
+                      if (result != null) {
+                        setState(() {
+                          _pathController.text = result;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+            if (_isLoading) ...[
+              const SizedBox(height: 16),
+              ProgressBar(value: _progress * 100),
+              const SizedBox(height: 8),
+              Text(_status),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        Button(
+          child: Text(context.l10n.cancel),
+          onPressed: _isLoading ? null : () => Navigator.pop(context),
+        ),
+        FilledButton(
+          child: _isLoading
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: ProgressRing(strokeWidth: 2),
+                )
+              : Text(context.l10n.migrate),
+          onPressed: _isLoading || _pathController.text.isEmpty
+              ? null
+              : () async {
+                  if (_pathController.text == widget.repository.localPath) {
+                    await showDialog(
+                      context: context,
+                      builder: (context) => ContentDialog(
+                        title: Text(context.l10n.error),
+                        content: Text(context.l10n.samePathError),
+                        actions: [
+                          Button(
+                            child: Text(context.l10n.ok),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                    );
+                    return;
+                  }
+
+                  setState(() => _isLoading = true);
+                  try {
+                    await RepositoryManager.instance.migrateRepository(
+                      widget.repository.id,
+                      _pathController.text,
+                      onProgress: (progress, message) {
+                        setState(() {
+                          _progress = progress;
+                          _status = message;
+                        });
+                      },
+                    );
+                    widget.onMigrated();
+                    if (mounted) Navigator.pop(context);
+                  } catch (e) {
+                    if (mounted) {
+                      await showDialog(
+                        context: context,
+                        builder: (context) => ContentDialog(
+                          title: Text(context.l10n.error),
+                          content: Text('${context.l10n.migrateFailed}: $e'),
+                          actions: [
+                            Button(
+                              child: Text(context.l10n.ok),
                               onPressed: () => Navigator.pop(context),
                             ),
                           ],

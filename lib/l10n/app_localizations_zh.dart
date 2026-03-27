@@ -121,6 +121,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get createInitialCommit => '创建初始提交';
 
   @override
+  String get ignoreConfiguration => '忽略配置（可选）';
+
+  @override
+  String get ignorePatterns => '忽略模式';
+
+  @override
+  String get ignorePatternsPlaceholder => '例如: *.log, .env (逗号分隔)';
+
+  @override
+  String get ignoreExtensions => '忽略扩展名';
+
+  @override
+  String get ignoreExtensionsPlaceholder => '例如: .log, .tmp (逗号分隔)';
+
+  @override
+  String get ignoreFolders => '忽略文件夹';
+
+  @override
+  String get ignoreFoldersPlaceholder => '例如: node_modules, build (逗号分隔)';
+
+  @override
   String get remoteConfiguration => '远程配置（可选）';
 
   @override
@@ -656,4 +677,101 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get goToAutomation => '跳转到自动化配置';
+
+  @override
+  String get fileManagement => '文件管理';
+
+  @override
+  String get rootDirectory => '根目录';
+
+  @override
+  String get emptyDirectory => '目录为空';
+
+  @override
+  String get ignored => '已忽略';
+
+  @override
+  String get tracked => '已跟踪';
+
+  @override
+  String get ignoreThisItem => '忽略此项';
+
+  @override
+  String get unignoreItem => '取消忽略';
+
+  @override
+  String get enterDirectory => '进入目录';
+
+  @override
+  String get addIgnoreRule => '添加忽略规则';
+
+  @override
+  String get viewAllRules => '查看所有规则';
+
+  @override
+  String get ignoreRuleList => '忽略规则列表';
+
+  @override
+  String get defaultRulesNotDeletable => '默认规则 (不可删除)';
+
+  @override
+  String get customRules => '自定义规则';
+
+  @override
+  String get noCustomRules => '暂无自定义规则';
+
+  @override
+  String ruleCount(int count) {
+    return '$count 条规则';
+  }
+
+  @override
+  String get enterIgnorePattern => '输入忽略模式（支持通配符 * 和 ?）:';
+
+  @override
+  String get patternExample => '例如: *.log, temp/, build/';
+
+  @override
+  String get directoryRuleHint => '提示：以 / 结尾表示目录';
+
+  @override
+  String get selectRepositoryFirst => '请先选择一个仓库';
+
+  @override
+  String get deleteRepository => '删除仓库';
+
+  @override
+  String get migrateRepository => '迁移仓库';
+
+  @override
+  String deleteRepositoryConfirm(Object name) {
+    return '确定要删除仓库\"$name\"吗？';
+  }
+
+  @override
+  String get deleteRepositoryHint => '只会从应用中移除仓库注册，不会删除本地文件。';
+
+  @override
+  String get notice => '注意';
+
+  @override
+  String get currentPath => '当前路径';
+
+  @override
+  String get newPath => '新路径';
+
+  @override
+  String get migrate => '迁移';
+
+  @override
+  String get samePathError => '新路径与当前路径相同';
+
+  @override
+  String get migrateFailed => '迁移失败';
+
+  @override
+  String get deleteNanosyncFolder => '同时删除 .nanosync 版本控制文件夹';
+
+  @override
+  String get deleteNanosyncFolderHint => '将永久删除仓库的所有版本历史记录，此操作不可恢复！';
 }

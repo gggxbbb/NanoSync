@@ -291,6 +291,48 @@ abstract class AppLocalizations {
   /// **'创建初始提交'**
   String get createInitialCommit;
 
+  /// No description provided for @ignoreConfiguration.
+  ///
+  /// In zh, this message translates to:
+  /// **'忽略配置（可选）'**
+  String get ignoreConfiguration;
+
+  /// No description provided for @ignorePatterns.
+  ///
+  /// In zh, this message translates to:
+  /// **'忽略模式'**
+  String get ignorePatterns;
+
+  /// No description provided for @ignorePatternsPlaceholder.
+  ///
+  /// In zh, this message translates to:
+  /// **'例如: *.log, .env (逗号分隔)'**
+  String get ignorePatternsPlaceholder;
+
+  /// No description provided for @ignoreExtensions.
+  ///
+  /// In zh, this message translates to:
+  /// **'忽略扩展名'**
+  String get ignoreExtensions;
+
+  /// No description provided for @ignoreExtensionsPlaceholder.
+  ///
+  /// In zh, this message translates to:
+  /// **'例如: .log, .tmp (逗号分隔)'**
+  String get ignoreExtensionsPlaceholder;
+
+  /// No description provided for @ignoreFolders.
+  ///
+  /// In zh, this message translates to:
+  /// **'忽略文件夹'**
+  String get ignoreFolders;
+
+  /// No description provided for @ignoreFoldersPlaceholder.
+  ///
+  /// In zh, this message translates to:
+  /// **'例如: node_modules, build (逗号分隔)'**
+  String get ignoreFoldersPlaceholder;
+
   /// No description provided for @remoteConfiguration.
   ///
   /// In zh, this message translates to:
@@ -1322,6 +1364,192 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'跳转到自动化配置'**
   String get goToAutomation;
+
+  /// No description provided for @fileManagement.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件管理'**
+  String get fileManagement;
+
+  /// No description provided for @rootDirectory.
+  ///
+  /// In zh, this message translates to:
+  /// **'根目录'**
+  String get rootDirectory;
+
+  /// No description provided for @emptyDirectory.
+  ///
+  /// In zh, this message translates to:
+  /// **'目录为空'**
+  String get emptyDirectory;
+
+  /// No description provided for @ignored.
+  ///
+  /// In zh, this message translates to:
+  /// **'已忽略'**
+  String get ignored;
+
+  /// No description provided for @tracked.
+  ///
+  /// In zh, this message translates to:
+  /// **'已跟踪'**
+  String get tracked;
+
+  /// No description provided for @ignoreThisItem.
+  ///
+  /// In zh, this message translates to:
+  /// **'忽略此项'**
+  String get ignoreThisItem;
+
+  /// No description provided for @unignoreItem.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消忽略'**
+  String get unignoreItem;
+
+  /// No description provided for @enterDirectory.
+  ///
+  /// In zh, this message translates to:
+  /// **'进入目录'**
+  String get enterDirectory;
+
+  /// No description provided for @addIgnoreRule.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加忽略规则'**
+  String get addIgnoreRule;
+
+  /// No description provided for @viewAllRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看所有规则'**
+  String get viewAllRules;
+
+  /// No description provided for @ignoreRuleList.
+  ///
+  /// In zh, this message translates to:
+  /// **'忽略规则列表'**
+  String get ignoreRuleList;
+
+  /// No description provided for @defaultRulesNotDeletable.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认规则 (不可删除)'**
+  String get defaultRulesNotDeletable;
+
+  /// No description provided for @customRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义规则'**
+  String get customRules;
+
+  /// No description provided for @noCustomRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无自定义规则'**
+  String get noCustomRules;
+
+  /// No description provided for @ruleCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 条规则'**
+  String ruleCount(int count);
+
+  /// No description provided for @enterIgnorePattern.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入忽略模式（支持通配符 * 和 ?）:'**
+  String get enterIgnorePattern;
+
+  /// No description provided for @patternExample.
+  ///
+  /// In zh, this message translates to:
+  /// **'例如: *.log, temp/, build/'**
+  String get patternExample;
+
+  /// No description provided for @directoryRuleHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'提示：以 / 结尾表示目录'**
+  String get directoryRuleHint;
+
+  /// No description provided for @selectRepositoryFirst.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先选择一个仓库'**
+  String get selectRepositoryFirst;
+
+  /// No description provided for @deleteRepository.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除仓库'**
+  String get deleteRepository;
+
+  /// No description provided for @migrateRepository.
+  ///
+  /// In zh, this message translates to:
+  /// **'迁移仓库'**
+  String get migrateRepository;
+
+  /// No description provided for @deleteRepositoryConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除仓库\"{name}\"吗？'**
+  String deleteRepositoryConfirm(Object name);
+
+  /// No description provided for @deleteRepositoryHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'只会从应用中移除仓库注册，不会删除本地文件。'**
+  String get deleteRepositoryHint;
+
+  /// No description provided for @notice.
+  ///
+  /// In zh, this message translates to:
+  /// **'注意'**
+  String get notice;
+
+  /// No description provided for @currentPath.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前路径'**
+  String get currentPath;
+
+  /// No description provided for @newPath.
+  ///
+  /// In zh, this message translates to:
+  /// **'新路径'**
+  String get newPath;
+
+  /// No description provided for @migrate.
+  ///
+  /// In zh, this message translates to:
+  /// **'迁移'**
+  String get migrate;
+
+  /// No description provided for @samePathError.
+  ///
+  /// In zh, this message translates to:
+  /// **'新路径与当前路径相同'**
+  String get samePathError;
+
+  /// No description provided for @migrateFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'迁移失败'**
+  String get migrateFailed;
+
+  /// No description provided for @deleteNanosyncFolder.
+  ///
+  /// In zh, this message translates to:
+  /// **'同时删除 .nanosync 版本控制文件夹'**
+  String get deleteNanosyncFolder;
+
+  /// No description provided for @deleteNanosyncFolderHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'将永久删除仓库的所有版本历史记录，此操作不可恢复！'**
+  String get deleteNanosyncFolderHint;
 }
 
 class _AppLocalizationsDelegate

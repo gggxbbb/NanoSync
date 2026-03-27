@@ -1853,4 +1853,239 @@ class VcEngine {
       );
     }
   }
+
+  /// 获取当前仓库的忽略规则列表
+  Future<List<String>> getIgnoreRules() async {
+    try {
+      final repo = await _getRepository();
+      if (repo == null) return [];
+      return await _loadIgnoreRules(repo.localPath);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// 添加忽略规则
+  Future<VcOperationResultData> addIgnoreRule(String rule) async {
+    try {
+      final repo = await _getRepository();
+      if (repo == null) {
+        return VcOperationResultData(
+          result: VcOperationResult.error,
+          message: 'Repository not found',
+        );
+      }
+
+      final normalizedRule = rule.trim();
+      if (normalizedRule.isEmpty) {
+        return VcOperationResultData(
+          result: VcOperationResult.error,
+          message: 'Invalid ignore rule',
+        );
+      }
+
+      final currentRules = await _loadIgnoreRules(repo.localPath);
+      if (currentRules.contains(normalizedRule)) {
+        return VcOperationResultData(
+          result: VcOperationResult.error,
+          message: 'Rule already exists',
+        );
+      }
+
+      currentRules.add(normalizedRule);
+      await _writeIgnoreRules(repo.localPath, currentRules);
+
+      return VcOperationResultData(
+        result: VcOperationResult.success,
+        message: 'Added ignore rule: $normalizedRule',
+      );
+    } catch (e) {
+      return VcOperationResultData(
+        result: VcOperationResult.error,
+        message: 'Failed to add ignore rule: $e',
+      );
+    }
+  }
+
+  /// 移除忽略规则
+  Future<VcOperationResultData> removeIgnoreRule(String rule) async {
+    try {
+      final repo = await _getRepository();
+      if (repo == null) {
+        return VcOperationResultData(
+          result: VcOperationResult.error,
+          message: 'Repository not found',
+        );
+      }
+
+      final normalizedRule = rule.trim();
+      final currentRules = await _loadIgnoreRules(repo.localPath);
+
+      // 不允许移除默认规则
+      if (_defaultIgnoreRules.contains(normalizedRule)) {
+        return VcOperationResultData(
+          result: VcOperationResult.error,
+          message: 'Cannot remove default ignore rule',
+        );
+      }
+
+      if (!currentRules.contains(normalizedRule)) {
+        return VcOperationResultData(
+          result: VcOperationResult.error,
+          message: 'Rule not found',
+        );
+      }
+
+      currentRules.remove(normalizedRule);
+
+      // 重写忽略文件（排除默认规则）
+      final filePath = p.join(repo.localPath, _ignoreFileName);
+      final file = File(filePath);
+      final customRules = currentRules
+          .where((r) => !_defaultIgnoreRules.contains(r))
+          .toList();
+      final content = [
+        '# NanoSync ignore rules',
+        '# One pattern per line',
+        ...customRules,
+        '',
+      ].join('\n');
+      await file.writeAsString(content);
+
+      return VcOperationResultData(
+        result: VcOperationResult.success,
+        message: 'Removed ignore rule: $normalizedRule',
+      );
+    } catch (e) {
+      return VcOperationResultData(
+        result: VcOperationResult.error,
+        message: 'Failed to remove ignore rule: $e',
+      );
+    }
+  }
+
+  /// 获取文件树结构
+  Future<List<VcFileTreeNode>> getFileTree({String? parentPath}) async {
+    try {
+      final repo = await _getRepository();
+      if (repo == null) return [];
+
+      final ignoreRules = await _loadIgnoreRules(repo.localPath);
+      final nodes = <VcFileTreeNode>[];
+      final localPath = repo.localPath;
+
+      // 确定要扫描的目录
+      final scanPath = parentPath == null
+          ? localPath
+          : p.join(localPath, parentPath);
+
+      final dir = Directory(scanPath);
+      if (!await dir.exists()) return [];
+
+      await for (final entity in dir.list(followLinks: false)) {
+        final relativePath = p.relative(entity.path, from: localPath);
+
+        // 跳过.nanosync目录
+        if (relativePath == '.nanosync') continue;
+
+        // 检查是否被忽略
+        final isIgnored = _isIgnoredPath(relativePath, ignoreRules);
+
+        if (entity is File) {
+          nodes.add(
+            VcFileTreeNode(
+              name: p.basename(entity.path),
+              relativePath: relativePath,
+              isDirectory: false,
+              isIgnored: isIgnored,
+            ),
+          );
+        } else if (entity is Directory) {
+          // 对于目录，检查是否整个目录被忽略
+          final dirIsIgnored =
+              isIgnored || _isDirIgnored(relativePath, ignoreRules);
+          nodes.add(
+            VcFileTreeNode(
+              name: p.basename(entity.path),
+              relativePath: relativePath,
+              isDirectory: true,
+              isIgnored: dirIsIgnored,
+            ),
+          );
+        }
+      }
+
+      // 排序：目录在前，文件在后，按名称排序
+      nodes.sort((a, b) {
+        if (a.isDirectory != b.isDirectory) {
+          return a.isDirectory ? -1 : 1;
+        }
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
+
+      return nodes;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// 检查目录是否被忽略
+  bool _isDirIgnored(String relativePath, List<String> ignoreRules) {
+    final path = relativePath.replaceAll('\\', '/');
+
+    for (final rule in ignoreRules) {
+      final normalizedRule = rule.trim().replaceAll('\\', '/');
+      if (normalizedRule.isEmpty) continue;
+
+      // 检查目录规则
+      if (normalizedRule.endsWith('/')) {
+        final prefix = normalizedRule.substring(0, normalizedRule.length - 1);
+        if (path == prefix) return true;
+      }
+
+      // 检查通配符
+      if (normalizedRule.contains('*')) {
+        final regex = _globToRegex(normalizedRule);
+        if (regex.hasMatch(path)) return true;
+      }
+
+      // 检查直接匹配
+      if (path == normalizedRule) return true;
+    }
+
+    return false;
+  }
+
+  /// 忽略指定路径
+  Future<VcOperationResultData> ignorePath(
+    String relativePath, {
+    bool isDirectory = false,
+  }) async {
+    final rule = isDirectory ? '$relativePath/' : relativePath;
+    return addIgnoreRule(rule);
+  }
+
+  /// 取消忽略指定路径
+  Future<VcOperationResultData> unignorePath(
+    String relativePath, {
+    bool isDirectory = false,
+  }) async {
+    final rule = isDirectory ? '$relativePath/' : relativePath;
+    return removeIgnoreRule(rule);
+  }
+}
+
+/// 文件树节点模型
+class VcFileTreeNode {
+  final String name;
+  final String relativePath;
+  final bool isDirectory;
+  final bool isIgnored;
+
+  VcFileTreeNode({
+    required this.name,
+    required this.relativePath,
+    required this.isDirectory,
+    required this.isIgnored,
+  });
 }

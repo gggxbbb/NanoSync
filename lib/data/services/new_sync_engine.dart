@@ -9,6 +9,7 @@ import '../vc_database.dart';
 import 'remote_connection_manager.dart';
 import 'repository_manager.dart';
 import 'smb_service.dart';
+import 'unc_service.dart';
 import 'vc_engine.dart';
 import 'vc_sync_service.dart';
 import 'webdav_service.dart';
@@ -25,6 +26,7 @@ class NewSyncEngine {
   final RepositoryManager _repoManager;
   final RemoteConnectionManager _connManager;
   final SmbService _smb;
+  final UncService _unc;
   final WebDAVService _webdav;
   final VcSyncService _vcSync;
   final void Function(double progress, String message)? onProgress;
@@ -36,6 +38,7 @@ class NewSyncEngine {
     RepositoryManager? repoManager,
     RemoteConnectionManager? connManager,
     SmbService? smb,
+    UncService? unc,
     WebDAVService? webdav,
     VcSyncService? vcSync,
     this.onProgress,
@@ -45,6 +48,7 @@ class NewSyncEngine {
        _repoManager = repoManager ?? RepositoryManager.instance,
        _connManager = connManager ?? RemoteConnectionManager.instance,
        _smb = smb ?? SmbService(),
+       _unc = unc ?? UncService(),
        _webdav = webdav ?? WebDAVService(),
        _vcSync = vcSync ?? VcSyncService();
 
@@ -570,11 +574,13 @@ class NewSyncEngine {
     } else if (conn.protocol.value == 'webdav') {
       await _webdav.connect(conn);
     }
+    // UNC 不需要显式连接，使用 Windows 凭据自动处理
   }
 
   void _disconnect() {
     _smb.disconnect();
     _webdav.disconnect();
+    // UNC 不需要显式断开连接
   }
 
   Future<void> _uploadFile(
@@ -584,6 +590,8 @@ class NewSyncEngine {
   ) async {
     if (conn.protocol.value == 'smb') {
       await _smb.uploadFile(conn, localPath, remotePath);
+    } else if (conn.protocol.value == 'unc') {
+      await _unc.uploadFile(conn, localPath, remotePath);
     } else if (conn.protocol.value == 'webdav') {
       await _webdav.uploadFile(conn, localPath, remotePath);
     }
@@ -598,6 +606,8 @@ class NewSyncEngine {
 
     if (conn.protocol.value == 'smb') {
       await _smb.downloadFile(conn, remotePath, localPath);
+    } else if (conn.protocol.value == 'unc') {
+      await _unc.downloadFile(conn, remotePath, localPath);
     } else if (conn.protocol.value == 'webdav') {
       await _webdav.downloadFile(conn, remotePath, localPath);
     }

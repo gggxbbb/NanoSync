@@ -1,7 +1,8 @@
 /// 远端协议类型
 enum RemoteProtocol {
   smb('smb', 'SMB'),
-  webdav('webdav', 'WebDAV');
+  webdav('webdav', 'WebDAV'),
+  unc('unc', 'Windows UNC');
 
   const RemoteProtocol(this.value, this.label);
   final String value;
@@ -13,6 +14,9 @@ enum RemoteProtocol {
       orElse: () => RemoteProtocol.smb,
     );
   }
+
+  /// 是否需要端口号
+  bool get requiresPort => this != unc;
 }
 
 /// 文件变更类型

@@ -1,6 +1,7 @@
 import '../database/database_helper.dart';
 import '../models/remote_connection.dart';
 import 'smb_service.dart';
+import 'unc_service.dart';
 import 'webdav_service.dart';
 
 class ConnectionTestResult {
@@ -14,14 +15,17 @@ class RemoteConnectionManager {
   static RemoteConnectionManager? _instance;
   final DatabaseHelper _db;
   final SmbService _smb;
+  final UncService _unc;
   final WebDAVService _webdav;
 
   RemoteConnectionManager._({
     DatabaseHelper? db,
     SmbService? smb,
+    UncService? unc,
     WebDAVService? webdav,
   }) : _db = db ?? DatabaseHelper.instance,
        _smb = smb ?? SmbService(),
+       _unc = unc ?? UncService(),
        _webdav = webdav ?? WebDAVService();
 
   static RemoteConnectionManager get instance {
@@ -106,6 +110,12 @@ class RemoteConnectionManager {
           password: conn.password,
           strictCredentialCheck: true,
         );
+        return ConnectionTestResult(
+          success: result.success,
+          error: result.error,
+        );
+      } else if (conn.protocol.value == 'unc') {
+        final result = await _unc.testConnection(uncPath: conn.host);
         return ConnectionTestResult(
           success: result.success,
           error: result.error,

@@ -213,6 +213,8 @@ class _ConnectionCard extends StatelessWidget {
             Icon(
               connection.protocol.value == 'smb'
                   ? FluentIcons.server
+                  : connection.protocol.value == 'unc'
+                  ? FluentIcons.folder
                   : FluentIcons.cloud,
               size: 32,
               color: isDark ? Colors.white : Colors.black,
@@ -234,7 +236,8 @@ class _ConnectionCard extends StatelessWidget {
                       color: AppStyles.lightTextSecondary(isDark),
                     ),
                   ),
-                  if (connection.username.isNotEmpty)
+                  if (connection.username.isNotEmpty &&
+                      connection.protocol != RemoteProtocol.unc)
                     Text(
                       'User: ${connection.username}',
                       style: AppStyles.textStyleCaption.copyWith(
@@ -286,6 +289,9 @@ class _AddEditConnectionDialogState extends State<_AddEditConnectionDialog> {
 
   bool get _isEditing => widget.connection != null;
 
+  /// 是否需要显示端口字段（UNC 不需要端口）
+  bool get _showPortField => _protocol.requiresPort;
+
   @override
   void initState() {
     super.initState();
@@ -330,14 +336,23 @@ class _AddEditConnectionDialogState extends State<_AddEditConnectionDialog> {
                     value: RemoteProtocol.webdav,
                     child: Text('WebDAV'),
                   ),
+                  ComboBoxItem(
+                    value: RemoteProtocol.unc,
+                    child: Text('Windows UNC'),
+                  ),
                 ],
                 onChanged: (v) {
                   if (v != null) {
                     setState(() {
                       _protocol = v;
-                      _portController.text = v == RemoteProtocol.smb
-                          ? '445'
-                          : '443';
+                      // UNC 不需要端口
+                      if (v == RemoteProtocol.unc) {
+                        _portController.text = '0';
+                      } else if (v == RemoteProtocol.smb) {
+                        _portController.text = '445';
+                      } else {
+                        _portController.text = '443';
+                      }
                     });
                   }
                 },
@@ -345,39 +360,45 @@ class _AddEditConnectionDialogState extends State<_AddEditConnectionDialog> {
             ),
             const SizedBox(height: 12),
             InfoLabel(
-              label: 'Host',
+              label: _protocol == RemoteProtocol.unc ? 'UNC Path' : 'Host',
               child: TextBox(
                 controller: _hostController,
-                placeholder: 'e.g., 192.168.1.100',
+                placeholder: _protocol == RemoteProtocol.unc
+                    ? r'e.g., \\server\share'
+                    : 'e.g., 192.168.1.100',
               ),
             ),
-            const SizedBox(height: 12),
-            InfoLabel(
-              label: 'Port',
-              child: TextBox(
-                controller: _portController,
-                placeholder: _protocol == RemoteProtocol.smb ? '445' : '443',
-                keyboardType: TextInputType.number,
+            if (_showPortField) ...[
+              const SizedBox(height: 12),
+              InfoLabel(
+                label: 'Port',
+                child: TextBox(
+                  controller: _portController,
+                  placeholder: _protocol == RemoteProtocol.smb ? '445' : '443',
+                  keyboardType: TextInputType.number,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            InfoLabel(
-              label: 'Username (optional)',
-              child: TextBox(
-                controller: _usernameController,
-                placeholder: 'Leave empty for guest access',
+            ],
+            if (_protocol != RemoteProtocol.unc) ...[
+              const SizedBox(height: 12),
+              InfoLabel(
+                label: 'Username (optional)',
+                child: TextBox(
+                  controller: _usernameController,
+                  placeholder: 'Leave empty for guest access',
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            InfoLabel(
-              label: 'Password (optional)',
-              child: PasswordBox(
-                controller: _passwordController,
-                revealMode: _obscurePassword
-                    ? PasswordRevealMode.hidden
-                    : PasswordRevealMode.visible,
+              const SizedBox(height: 12),
+              InfoLabel(
+                label: 'Password (optional)',
+                child: PasswordBox(
+                  controller: _passwordController,
+                  revealMode: _obscurePassword
+                      ? PasswordRevealMode.hidden
+                      : PasswordRevealMode.visible,
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),

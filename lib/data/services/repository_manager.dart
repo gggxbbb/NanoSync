@@ -143,8 +143,8 @@ class RepositoryManager {
 
   Future<Repository> importExisting(
     String localPath, {
-    bool initialCommit = false,
     String? name,
+    IgnoreConfig? ignoreConfig,
     String? remoteName,
     String? remotePath,
   }) async {
@@ -163,9 +163,15 @@ class RepositoryManager {
           await RepositoryConfig.loadFromFile(
             await RepositoryConfig.getConfigPath(normalizedPath),
           ) ??
-          RepositoryConfig(name: name ?? p.basename(normalizedPath));
+          RepositoryConfig(
+            name: name ?? p.basename(normalizedPath),
+            ignore: ignoreConfig ?? const IgnoreConfig(),
+          );
     } else {
-      config = RepositoryConfig(name: name ?? p.basename(normalizedPath));
+      config = RepositoryConfig(
+        name: name ?? p.basename(normalizedPath),
+        ignore: ignoreConfig ?? const IgnoreConfig(),
+      );
       await config.saveToFile(normalizedPath);
     }
 
@@ -195,10 +201,9 @@ class RepositoryManager {
       );
     }
 
-    if (initialCommit) {
-      await engine.add(all: true);
-      await engine.commit(message: 'Initial commit');
-    }
+    // 注册仓库时必须创建初始提交
+    await engine.add(all: true);
+    await engine.commit(message: 'Initial commit');
 
     if (remoteName != null && remotePath != null && remotePath.isNotEmpty) {
       final existingRemote = await _db.getRemoteConnectionByName(remoteName);
@@ -283,6 +288,85 @@ class RepositoryManager {
       'name': repo.name,
       'last_accessed': DateTime.now().toIso8601String(),
     });
+  }
+
+  /// 删除仓库（可选择是否删除 .nanosync 文件夹）
+  Future<void> deleteRepository(
+    String repositoryId, {
+    bool deleteNanosyncFolder = false,
+  }) async {
+    final repo = await getRepository(repositoryId);
+    if (repo == null) return;
+
+    // 从数据库中注销仓库
+    await unregisterRepository(repositoryId);
+
+    // 从版本控制数据库中删除
+    await _vcDb.deleteRepository(repositoryId);
+
+    // 如果需要删除 .nanosync 文件夹
+    if (deleteNanosyncFolder) {
+      final nanosyncDir = Directory(p.join(repo.localPath, '.nanosync'));
+      if (await nanosyncDir.exists()) {
+        await nanosyncDir.delete(recursive: true);
+      }
+    }
+  }
+
+  /// 迁移仓库到新路径
+  Future<Repository> migrateRepository(
+    String repositoryId,
+    String newLocalPath, {
+    void Function(double progress, String message)? onProgress,
+  }) async {
+    final repo = await getRepository(repositoryId);
+    if (repo == null) {
+      throw Exception('Repository not found: $repositoryId');
+    }
+
+    final normalizedNewPath = _normalizePath(newLocalPath);
+    final oldPath = repo.localPath;
+
+    if (oldPath == normalizedNewPath) {
+      return repo;
+    }
+
+    // 检查目标路径是否已存在
+    final newDir = Directory(normalizedNewPath);
+    if (await newDir.exists()) {
+      throw Exception('Target directory already exists: $normalizedNewPath');
+    }
+
+    onProgress?.call(0.1, 'Checking source directory...');
+
+    final oldDir = Directory(oldPath);
+    if (!await oldDir.exists()) {
+      throw Exception('Source directory does not exist: $oldPath');
+    }
+
+    onProgress?.call(0.2, 'Moving repository files...');
+
+    // 移动整个目录
+    await oldDir.rename(normalizedNewPath);
+
+    onProgress?.call(0.8, 'Updating database records...');
+
+    // 更新数据库中的路径
+    await _db.updateRegisteredRepository(repositoryId, {
+      'local_path': normalizedNewPath,
+      'last_accessed': DateTime.now().toIso8601String(),
+    });
+
+    // 更新版本控制数据库中的路径
+    await _vcDb.updateRepository(repositoryId, {
+      'local_path': normalizedNewPath,
+      'updated_at': DateTime.now().toIso8601String(),
+    });
+
+    onProgress?.call(1.0, 'Migration complete');
+
+    // 返回更新后的仓库对象
+    return (await getRepository(repositoryId))!;
   }
 
   String _normalizePath(String path) {

@@ -58,6 +58,13 @@
   "repositoryName": "仓库名称",
   "enterName": "输入名称...",
   "createInitialCommit": "创建初始提交",
+  "ignoreConfiguration": "忽略配置（可选）",
+  "ignorePatterns": "忽略模式",
+  "ignorePatternsPlaceholder": "例如: *.log, .env (逗号分隔)",
+  "ignoreExtensions": "忽略扩展名",
+  "ignoreExtensionsPlaceholder": "例如: .log, .tmp (逗号分隔)",
+  "ignoreFolders": "忽略文件夹",
+  "ignoreFoldersPlaceholder": "例如: node_modules, build (逗号分隔)",
   "remoteConfiguration": "远程配置（可选）",
   "connection": "连接",
   "selectConnection": "选择连接...",
@@ -281,5 +288,46 @@
   "varBranch": "当前分支名",
   "varChangesSummary": "变更文件摘要",
   "goToVersionControl": "跳转到版本控制",
-  "goToAutomation": "跳转到自动化配置"
+  "goToAutomation": "跳转到自动化配置",
+  "fileManagement": "文件管理",
+  "rootDirectory": "根目录",
+  "emptyDirectory": "目录为空",
+  "ignored": "已忽略",
+  "tracked": "已跟踪",
+  "ignoreThisItem": "忽略此项",
+  "unignoreItem": "取消忽略",
+  "enterDirectory": "进入目录",
+  "addIgnoreRule": "添加忽略规则",
+  "viewAllRules": "查看所有规则",
+  "ignoreRuleList": "忽略规则列表",
+  "defaultRulesNotDeletable": "默认规则 (不可删除)",
+  "customRules": "自定义规则",
+  "noCustomRules": "暂无自定义规则",
+  "ruleCount": "{count} 条规则",
+  "@ruleCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "enterIgnorePattern": "输入忽略模式（支持通配符 * 和 ?）:",
+  "patternExample": "例如: *.log, temp/, build/",
+  "directoryRuleHint": "提示：以 / 结尾表示目录",
+  "selectRepositoryFirst": "请先选择一个仓库",
+  "deleteRepository": "删除仓库",
+  "migrateRepository": "迁移仓库",
+  "deleteRepositoryConfirm": "确定要删除仓库\"{name}\"吗？",
+  "@deleteRepositoryConfirm": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "deleteRepositoryHint": "只会从应用中移除仓库注册，不会删除本地文件。",
+  "notice": "注意",
+  "currentPath": "当前路径",
+  "newPath": "新路径",
+  "migrate": "迁移",
+  "samePathError": "新路径与当前路径相同",
+  "migrateFailed": "迁移失败",
+  "deleteNanosyncFolder": "同时删除 .nanosync 版本控制文件夹",
+  "deleteNanosyncFolderHint": "将永久删除仓库的所有版本历史记录，此操作不可恢复！"
 }
