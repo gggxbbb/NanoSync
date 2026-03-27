@@ -1,26 +1,26 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:webdav_client_plus/webdav_client_plus.dart';
-import '../models/sync_task.dart';
-import '../models/file_snapshot.dart';
+import '../models/remote_connection.dart';
 
 /// WebDAV连接与文件操作服务
 class WebDAVService {
   WebdavClient? _client;
 
-  WebdavClient _createClient(SyncTask task) {
-    final port = task.remotePort == 0 ? 443 : task.remotePort;
+  WebdavClient _createClient(RemoteConnection connection, String remotePath) {
+    final port = connection.port == 0 ? 443 : connection.port;
     final scheme = port == 443 ? 'https' : 'http';
-    final url = '$scheme://${task.remoteHost}:$port${task.remotePath}';
+    final normalizedPath = _normalizePath(remotePath);
+    final url = '$scheme://${connection.host}:$port$normalizedPath';
 
     late WebdavClient client;
-    if (task.remoteUsername.isEmpty) {
+    if (connection.username.isEmpty) {
       client = WebdavClient.noAuth(url: url);
     } else {
       client = WebdavClient.basicAuth(
         url: url,
-        user: task.remoteUsername,
-        pwd: task.remotePassword,
+        user: connection.username,
+        pwd: connection.password,
       );
     }
 
@@ -29,9 +29,9 @@ class WebDAVService {
     return client;
   }
 
-  Future<bool> connect(SyncTask task) async {
+  Future<bool> connect(RemoteConnection connection, {String remotePath = '/'}) async {
     try {
-      _client = _createClient(task);
+      _client = _createClient(connection, remotePath);
       await _client!.ping();
       return true;
     } catch (e) {
@@ -45,9 +45,13 @@ class WebDAVService {
   }
 
   /// 测试连接：检查服务器可达性、目录存在性和可写性
-  Future<({bool success, String? error})> testConnection(SyncTask task) async {
+  Future<({bool success, String? error})> testConnection(
+    RemoteConnection connection, {
+    String probePath = '/',
+  }) async {
     try {
-      final client = _createClient(task);
+      final normalizedProbePath = _normalizePath(probePath);
+      final client = _createClient(connection, normalizedProbePath);
 
       // 1. 测试服务器可达性
       try {
@@ -55,7 +59,7 @@ class WebDAVService {
       } catch (e) {
         return (
           success: false,
-          error: '无法连接到服务器: ${task.remoteHost}:${task.remotePort}',
+          error: '无法连接到服务器: ${connection.host}:${connection.port}',
         );
       }
 
@@ -63,7 +67,7 @@ class WebDAVService {
       try {
         await client.readDir('/');
       } catch (e) {
-        return (success: false, error: '目标目录不存在或无访问权限: ${task.remotePath}');
+        return (success: false, error: '目标目录不存在或无访问权限: $normalizedProbePath');
       }
 
       // 3. 测试目录可写性（尝试创建并删除一个测试文件）
@@ -77,10 +81,10 @@ class WebDAVService {
           await client.remove(testFileName);
         } catch (e) {
           // 如果不能创建目录，尝试用文件测试
-          return (success: false, error: '目标目录不可写: ${task.remotePath}');
+          return (success: false, error: '目标目录不可写: $normalizedProbePath');
         }
       } catch (e) {
-        return (success: false, error: '目标目录不可写: ${task.remotePath}');
+        return (success: false, error: '目标目录不可写: $normalizedProbePath');
       }
 
       return (success: true, error: null);
@@ -89,69 +93,13 @@ class WebDAVService {
     }
   }
 
-  Future<List<FileSnapshot>> scanRemoteFolder(SyncTask task) async {
-    if (_client == null) {
-      final connected = await connect(task);
-      if (!connected) throw Exception('无法连接到WebDAV服务器');
-    }
-
-    final snapshots = <FileSnapshot>[];
-    await _scanDirectory(task, '/', snapshots);
-    return snapshots;
-  }
-
-  Future<void> _scanDirectory(
-    SyncTask task,
-    String remotePath,
-    List<FileSnapshot> snapshots,
-  ) async {
-    try {
-      final files = await _client!.readDir(remotePath);
-
-      for (final file in files) {
-        if (file.name == '.nanosync_versions') continue;
-
-        final relativePath = remotePath == '/'
-            ? file.name
-            : '$remotePath/${file.name}';
-
-        if (file.isDir) {
-          snapshots.add(
-            FileSnapshot(
-              taskId: task.id,
-              relativePath: relativePath,
-              absolutePath: relativePath,
-              fileSize: 0,
-              lastModified: file.modified ?? DateTime.now(),
-              crc32: '',
-              isDirectory: true,
-            ),
-          );
-          await _scanDirectory(task, relativePath, snapshots);
-        } else {
-          snapshots.add(
-            FileSnapshot(
-              taskId: task.id,
-              relativePath: relativePath,
-              absolutePath: relativePath,
-              fileSize: file.size ?? 0,
-              lastModified: file.modified ?? DateTime.now(),
-              crc32: '',
-              isDirectory: false,
-            ),
-          );
-        }
-      }
-    } catch (_) {}
-  }
-
   Future<void> uploadFile(
-    SyncTask task,
+    RemoteConnection connection,
     String localPath,
     String remotePath,
   ) async {
     if (_client == null) {
-      final connected = await connect(task);
+      final connected = await connect(connection);
       if (!connected) throw Exception('无法连接到WebDAV服务器');
     }
 
@@ -174,12 +122,12 @@ class WebDAVService {
   }
 
   Future<void> downloadFile(
-    SyncTask task,
+    RemoteConnection connection,
     String remotePath,
     String localPath,
   ) async {
     if (_client == null) {
-      final connected = await connect(task);
+      final connected = await connect(connection);
       if (!connected) throw Exception('无法连接到WebDAV服务器');
     }
 
@@ -252,32 +200,12 @@ class WebDAVService {
     }
   }
 
-  Future<FileSnapshot?> getRemoteFileInfo(
-    SyncTask task,
-    String remotePath,
-  ) async {
-    if (_client == null) return null;
-    try {
-      final parentDir = p.dirname(remotePath);
-      final fileName = p.basename(remotePath);
-      final files = await _client!.readDir(parentDir);
-
-      for (final file in files) {
-        if (file.name == fileName) {
-          return FileSnapshot(
-            taskId: task.id,
-            relativePath: remotePath,
-            absolutePath: remotePath,
-            fileSize: file.size ?? 0,
-            lastModified: file.modified ?? DateTime.now(),
-            crc32: '',
-            isDirectory: file.isDir,
-          );
-        }
-      }
-      return null;
-    } catch (_) {
-      return null;
+  String _normalizePath(String path) {
+    final trimmed = path.trim();
+    if (trimmed.isEmpty) {
+      return '/';
     }
+    final withLeadingSlash = trimmed.startsWith('/') ? trimmed : '/$trimmed';
+    return withLeadingSlash.replaceAll(RegExp(r'/+'), '/');
   }
 }

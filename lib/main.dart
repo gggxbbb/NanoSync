@@ -5,8 +5,6 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:window_manager/window_manager.dart';
 import 'core/theme/app_theme.dart';
 import 'data/vc_database.dart';
-import 'shared/providers/task_provider.dart';
-import 'shared/providers/target_provider.dart';
 import 'shared/providers/vc_repository_provider.dart';
 import 'shared/widgets/app_shell.dart';
 
@@ -41,8 +39,6 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeManager()),
-        ChangeNotifierProvider(create: (_) => TaskProvider()),
-        ChangeNotifierProvider(create: (_) => TargetProvider()),
         ChangeNotifierProvider(create: (_) => VcRepositoryProvider()),
       ],
       child: const NanoSyncApp(),

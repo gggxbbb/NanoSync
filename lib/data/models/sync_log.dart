@@ -1,8 +1,8 @@
 /// 同步日志模型
 class SyncLog {
   final String id;
-  final String taskId;
-  final String taskName;
+  final String repositoryId;
+  final String repositoryName;
   final DateTime startTime;
   DateTime? endTime;
   int totalFiles;
@@ -12,12 +12,15 @@ class SyncLog {
   int conflictCount;
   String status;
   String? errorMessage;
+  final String sourceDeviceFingerprint;
+  final String sourceDeviceName;
+  final String sourceUsername;
   List<LogEntry> entries;
 
   SyncLog({
     String? id,
-    required this.taskId,
-    required this.taskName,
+    required this.repositoryId,
+    required this.repositoryName,
     DateTime? startTime,
     this.endTime,
     this.totalFiles = 0,
@@ -27,6 +30,9 @@ class SyncLog {
     this.conflictCount = 0,
     this.status = 'running',
     this.errorMessage,
+    this.sourceDeviceFingerprint = '',
+    this.sourceDeviceName = '',
+    this.sourceUsername = '',
     List<LogEntry>? entries,
   })  : id = id ?? _generateId(),
         startTime = startTime ?? DateTime.now(),
@@ -53,8 +59,8 @@ class SyncLog {
   factory SyncLog.fromMap(Map<String, dynamic> map) {
     return SyncLog(
       id: map['id'] as String,
-      taskId: map['task_id'] as String,
-      taskName: map['task_name'] as String,
+      repositoryId: (map['repository_id'] ?? map['task_id']) as String,
+      repositoryName: (map['repository_name'] ?? map['task_name']) as String,
       startTime: DateTime.parse(map['start_time'] as String),
       endTime: map['end_time'] != null
           ? DateTime.parse(map['end_time'] as String)
@@ -66,14 +72,18 @@ class SyncLog {
       conflictCount: map['conflict_count'] as int? ?? 0,
       status: map['status'] as String? ?? 'running',
       errorMessage: map['error_message'] as String?,
+      sourceDeviceFingerprint:
+          map['source_device_fingerprint'] as String? ?? '',
+      sourceDeviceName: map['source_device_name'] as String? ?? '',
+      sourceUsername: map['source_username'] as String? ?? '',
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'task_id': taskId,
-      'task_name': taskName,
+      'repository_id': repositoryId,
+      'repository_name': repositoryName,
       'start_time': startTime.toIso8601String(),
       'end_time': endTime?.toIso8601String(),
       'total_files': totalFiles,
@@ -83,6 +93,9 @@ class SyncLog {
       'conflict_count': conflictCount,
       'status': status,
       'error_message': errorMessage,
+      'source_device_fingerprint': sourceDeviceFingerprint,
+      'source_device_name': sourceDeviceName,
+      'source_username': sourceUsername,
     };
   }
 }

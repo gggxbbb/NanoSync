@@ -4,8 +4,6 @@ import '../../data/models/sync_log.dart';
 import '../../data/services/vc_sync_service.dart';
 import '../../shared/widgets/components/indicators.dart';
 import '../../shared/widgets/components/dialogs.dart';
-import '../../shared/providers/task_provider.dart';
-import 'package:provider/provider.dart';
 
 class LogPage extends StatefulWidget {
   const LogPage({super.key});
@@ -38,7 +36,7 @@ class _LogPageState extends State<LogPage> {
   List<SyncLog> get _filteredLogs {
     if (_searchQuery.isEmpty) return _logs;
     return _logs.where((l) {
-      final name = l.taskName.isEmpty ? '已删除的任务' : l.taskName;
+      final name = l.repositoryName.isEmpty ? '已删除的仓库' : l.repositoryName;
       return name.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
   }
@@ -127,8 +125,8 @@ class _LogPageState extends State<LogPage> {
     final bgColor = isDark
         ? AppStyles.darkCard.withValues(alpha: 0.85)
         : AppStyles.lightCard.withValues(alpha: 0.85);
-    final taskName = log.taskName.isEmpty ? '已删除的任务' : log.taskName;
-    final isDeleted = log.taskName.isEmpty;
+    final taskName = log.repositoryName.isEmpty ? '已删除的仓库' : log.repositoryName;
+    final isDeleted = log.repositoryName.isEmpty;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -213,17 +211,26 @@ class _LogPageState extends State<LogPage> {
                       color: isDark ? Colors.grey[100] : Colors.grey[140],
                     ),
                   ),
+                  if (log.sourceDeviceName.isNotEmpty ||
+                      log.sourceUsername.isNotEmpty)
+                    Text(
+                      '来源: ${log.sourceDeviceName.isEmpty ? '-' : log.sourceDeviceName} / ${log.sourceUsername.isEmpty ? '-' : log.sourceUsername}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.grey[100] : Colors.grey[140],
+                      ),
+                    ),
                 ],
               ),
             ),
             if (!isDeleted)
-              IconButton(
-                icon: Icon(
+              Tooltip(
+                message: '仓库同步请在“仓库”页面执行',
+                child: Icon(
                   FluentIcons.sync,
                   size: 14,
                   color: AppStyles.primaryColor,
                 ),
-                onPressed: () => _forceResync(log.taskId),
               ),
           ],
         ),
@@ -277,18 +284,6 @@ class _LogPageState extends State<LogPage> {
 
   String _formatTime(DateTime time) {
     return '${time.year}-${time.month.toString().padLeft(2, '0')}-${time.day.toString().padLeft(2, '0')} ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-  }
-
-  Future<void> _forceResync(String taskId) async {
-    final confirmed = await showConfirmDialog(
-      context,
-      title: '强制重新同步',
-      content: '确定要强制重新同步此任务吗？这将忽略当前同步状态。',
-    );
-    if (confirmed) {
-      final provider = context.read<TaskProvider>();
-      await provider.runSync(taskId);
-    }
   }
 
   Future<void> _clearLogs() async {

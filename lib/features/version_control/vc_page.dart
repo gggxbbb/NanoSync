@@ -1,10 +1,9 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:provider/provider.dart';
-import '../../data/models/sync_task.dart';
 import '../../data/models/vc_models.dart';
+import '../../data/services/repository_manager.dart';
 import '../../data/services/vc_engine.dart';
 import '../../core/theme/app_theme.dart';
-import '../../shared/providers/task_provider.dart';
 import '../../shared/providers/vc_repository_provider.dart';
 import '../../shared/widgets/components/safe_combo_box.dart';
 import 'widgets/diff_viewer.dart';
@@ -1110,17 +1109,13 @@ class _VersionControlPageState extends State<VersionControlPage> {
   }
 
   Future<void> _showInitRepoDialog() async {
-    final taskProvider = context.read<TaskProvider>();
     final vcProvider = context.read<VcRepositoryProvider>();
-
-    if (taskProvider.tasks.isEmpty && !taskProvider.isLoading) {
-      await taskProvider.loadTasks();
-    }
+    final registeredRepos = await RepositoryManager.instance.listRepositories();
 
     if (!mounted) return;
 
-    SyncTask? selectedTask = taskProvider.tasks.isNotEmpty
-        ? taskProvider.tasks.first
+    Repository? selectedRepo = registeredRepos.isNotEmpty
+        ? registeredRepos.first
         : null;
     final branchController = TextEditingController(text: 'main');
     final ignoreRulesController = TextEditingController(
@@ -1139,24 +1134,24 @@ class _VersionControlPageState extends State<VersionControlPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('选择一个同步任务作为版本库目录'),
+                  const Text('选择一个已注册仓库作为版本库目录'),
                   const SizedBox(height: 8),
-                  if (taskProvider.tasks.isEmpty)
-                    const Text('暂无同步任务，请先在“同步任务”页面创建任务')
+                  if (registeredRepos.isEmpty)
+                    const Text('暂无已注册仓库，请先在“仓库”页面导入或克隆仓库')
                   else
-                    SafeComboBox<SyncTask>(
+                    SafeComboBox<Repository>(
                       isExpanded: true,
-                      value: selectedTask,
-                      items: taskProvider.tasks
+                      value: selectedRepo,
+                      items: registeredRepos
                           .map(
-                            (task) => ComboBoxItem<SyncTask>(
-                              value: task,
-                              child: Text(task.name),
+                            (repo) => ComboBoxItem<Repository>(
+                              value: repo,
+                              child: Text(repo.name),
                             ),
                           )
                           .toList(),
                       onChanged: (value) {
-                        setDialogState(() => selectedTask = value);
+                        setDialogState(() => selectedRepo = value);
                       },
                     ),
                   const SizedBox(height: 12),
@@ -1181,14 +1176,14 @@ class _VersionControlPageState extends State<VersionControlPage> {
               ),
               FilledButton(
                 child: const Text('创建'),
-                onPressed: taskProvider.tasks.isEmpty || selectedTask == null
+                onPressed: registeredRepos.isEmpty || selectedRepo == null
                     ? null
                     : () async {
-                        final task = selectedTask!;
+                        final repoToInit = selectedRepo!;
                         final navigator = Navigator.of(dialogContext);
                         VcRepository? existingRepo;
                         for (final repo in vcProvider.repositories) {
-                          if (repo.localPath == task.localPath) {
+                          if (repo.localPath == repoToInit.localPath) {
                             existingRepo = repo;
                             break;
                           }
@@ -1206,8 +1201,8 @@ class _VersionControlPageState extends State<VersionControlPage> {
                         }
 
                         final result = await vcProvider.createRepository(
-                          name: task.name,
-                          localPath: task.localPath,
+                          name: repoToInit.name,
+                          localPath: repoToInit.localPath,
                           initialBranch: branchController.text.trim(),
                           ignoreRules: ignoreRulesController.text
                               .split('\n')

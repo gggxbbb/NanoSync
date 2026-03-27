@@ -2,13 +2,11 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
+import '../../core/utils/device_identity.dart';
 import '../../core/theme/app_theme.dart';
-import '../providers/task_provider.dart';
 import '../providers/vc_repository_provider.dart';
-import '../providers/target_provider.dart';
-import '../../features/dashboard/dashboard_page.dart';
-import '../../features/task_management/task_list_page.dart';
-import '../../features/task_management/target_list_page.dart';
+import '../../features/repository/repository_list_page.dart';
+import '../../features/remote/remote_connections_page.dart';
 import '../../features/version_control/vc_page.dart';
 import '../../features/sync_log/log_page.dart';
 import '../../features/settings/settings_page.dart';
@@ -24,12 +22,12 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> with WindowListener {
   int _selectedIndex = 0;
   bool _isMaximized = false;
-  late final TargetProvider _targetProvider;
+  late final DeviceIdentity _deviceIdentity;
 
   @override
   void initState() {
     super.initState();
-    _targetProvider = context.read<TargetProvider>();
+    _deviceIdentity = DeviceIdentityResolver.resolve();
     windowManager.addListener(this);
     _checkMaximized();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -41,11 +39,6 @@ class _AppShellState extends State<AppShell> with WindowListener {
   Future<void> _initVersionControl() async {
     final vcProvider = context.read<VcRepositoryProvider>();
     await vcProvider.loadRepositories();
-    await _targetProvider.loadTargets(refreshStatuses: true);
-    _targetProvider.startAutoRefresh(
-      interval: const Duration(seconds: 30),
-      refreshImmediately: false,
-    );
     if (!mounted) return;
 
     if (vcProvider.currentRepository == null &&
@@ -56,7 +49,6 @@ class _AppShellState extends State<AppShell> with WindowListener {
 
   @override
   void dispose() {
-    _targetProvider.stopAutoRefresh();
     windowManager.removeListener(this);
     super.dispose();
   }
@@ -115,9 +107,8 @@ class _AppShellState extends State<AppShell> with WindowListener {
             MediaQuery.platformBrightnessOf(context) == Brightness.dark);
 
     final pages = [
-      const DashboardPage(),
-      const TaskListPage(),
-      const TargetListPage(),
+      const RepositoryListPage(),
+      const RemoteConnectionsPage(),
       VersionControlPage(repositoryId: vcProvider.currentRepository?.id),
       const LogPage(),
       const SettingsPage(),
@@ -144,17 +135,12 @@ class _AppShellState extends State<AppShell> with WindowListener {
           items: [
             PaneItem(
               icon: const Icon(FluentIcons.view),
-              title: Text('仪表盘', style: AppStyles.textStyleBody),
-              body: const SizedBox.shrink(),
-            ),
-            PaneItem(
-              icon: const Icon(FluentIcons.sync_folder),
-              title: Text('同步任务', style: AppStyles.textStyleBody),
+              title: Text('仓库', style: AppStyles.textStyleBody),
               body: const SizedBox.shrink(),
             ),
             PaneItem(
               icon: const Icon(FluentIcons.server),
-              title: Text('同步目标', style: AppStyles.textStyleBody),
+              title: Text('远程连接', style: AppStyles.textStyleBody),
               body: const SizedBox.shrink(),
             ),
             PaneItem(
@@ -237,36 +223,44 @@ class _AppShellState extends State<AppShell> with WindowListener {
   }
 
   Widget _buildSyncStatus(bool isDark) {
-    return Consumer<TaskProvider>(
-      builder: (context, provider, _) {
-        if (provider.hasRunningTask) {
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppStyles.primaryColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(4),
+    final fp = _deviceIdentity.fingerprint;
+    final shortFp = fp.length > 8 ? fp.substring(fp.length - 8) : fp;
+    final deviceName = _deviceIdentity.deviceName.isEmpty
+        ? 'unknown-device'
+        : _deviceIdentity.deviceName;
+    final username =
+        _deviceIdentity.username.isEmpty ? 'unknown-user' : _deviceIdentity.username;
+
+    return Tooltip(
+      message:
+          'device: $deviceName\nuser: $username\nfingerprint: ${_deviceIdentity.fingerprint}',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              FluentIcons.server,
+              size: 12,
+              color: isDark ? Colors.grey[20] : Colors.grey[130],
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(
-                  width: 12,
-                  height: 12,
-                  child: ProgressRing(strokeWidth: 2),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '同步中',
-                  style: AppStyles.textStyleCaption.copyWith(
-                    color: AppStyles.primaryColor,
-                  ),
-                ),
-              ],
+            const SizedBox(width: 6),
+            Text(
+              '$deviceName/$username#$shortFp',
+              style: AppStyles.textStyleCaption.copyWith(
+                fontSize: 11,
+                color: isDark ? Colors.grey[20] : Colors.grey[130],
+              ),
             ),
-          );
-        }
-        return const SizedBox.shrink();
-      },
+          ],
+        ),
+      ),
     );
   }
 
