@@ -1,10 +1,13 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
+import '../../core/constants/app_constants.dart';
 import '../database/database_helper.dart';
+import '../models/repository_local_settings.dart';
 import '../models/repository_config.dart';
 import '../vc_database.dart';
 import 'vc_engine.dart';
+import 'repository_local_settings_service.dart';
 
 class Repository {
   final String id;
@@ -54,10 +57,16 @@ class RepositoryManager {
   static RepositoryManager? _instance;
   final DatabaseHelper _db;
   final VcDatabase _vcDb;
+  final RepositoryLocalSettingsService _localSettings;
 
-  RepositoryManager._({DatabaseHelper? db, VcDatabase? vcDb})
-    : _db = db ?? DatabaseHelper.instance,
-      _vcDb = vcDb ?? VcDatabase.instance;
+  RepositoryManager._({
+    DatabaseHelper? db,
+    VcDatabase? vcDb,
+    RepositoryLocalSettingsService? localSettings,
+  }) : _db = db ?? DatabaseHelper.instance,
+       _vcDb = vcDb ?? VcDatabase.instance,
+       _localSettings =
+           localSettings ?? RepositoryLocalSettingsService.instance;
 
   static RepositoryManager get instance {
     _instance ??= RepositoryManager._();
@@ -147,6 +156,9 @@ class RepositoryManager {
     IgnoreConfig? ignoreConfig,
     String? remoteName,
     String? remotePath,
+    int? maxVersions,
+    int? maxVersionDays,
+    int? maxVersionSizeGB,
   }) async {
     final normalizedPath = _normalizePath(localPath);
     final dir = Directory(normalizedPath);
@@ -218,6 +230,19 @@ class RepositoryManager {
         });
       }
     }
+
+    final now = DateTime.now();
+    await _localSettings.saveSettings(
+      RepositoryLocalSettings(
+        repositoryId: repo.id,
+        maxVersions: maxVersions ?? AppConstants.defaultMaxVersions,
+        maxVersionDays: maxVersionDays ?? AppConstants.defaultMaxVersionDays,
+        maxVersionSizeGB:
+            maxVersionSizeGB ?? AppConstants.defaultMaxVersionSizeGB,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
 
     return repo;
   }
@@ -300,6 +325,7 @@ class RepositoryManager {
 
     // 从数据库中注销仓库
     await unregisterRepository(repositoryId);
+    await _localSettings.deleteSettings(repositoryId);
 
     // 从版本控制数据库中删除
     await _vcDb.deleteRepository(repositoryId);

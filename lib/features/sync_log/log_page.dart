@@ -2,6 +2,7 @@ import '../../core/theme/app_theme.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../../data/models/sync_log.dart';
 import '../../data/services/vc_sync_service.dart';
+import '../../shared/widgets/components/cards.dart';
 import '../../shared/widgets/components/indicators.dart';
 import '../../shared/widgets/components/dialogs.dart';
 import '../../l10n/l10n.dart';
@@ -107,19 +108,11 @@ class _LogPageState extends State<LogPage> {
         : isFailed
         ? AppStyles.errorColor
         : AppStyles.infoColor;
-    final bgColor = isDark
-        ? AppStyles.darkCard.withValues(alpha: 0.85)
-        : AppStyles.lightCard.withValues(alpha: 0.85);
     final taskName = log.repositoryName.isEmpty ? '已删除的仓库' : log.repositoryName;
     final isDeleted = log.repositoryName.isEmpty;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppStyles.borderColor(isDark)),
-      ),
+    return AppCardSurface(
+      padding: EdgeInsets.zero,
       child: Expander(
         leading: Container(
           width: 32,
@@ -264,7 +257,14 @@ class _LogPageState extends State<LogPage> {
               ),
             ),
           ),
-          Text(value, style: AppStyles.textStyleBody),
+          Expanded(
+            child: Text(
+              value,
+              style: AppStyles.textStyleBody.copyWith(
+                color: isDark ? Colors.white : Colors.black,
+              ),
+            ),
+          ),
         ],
       ),
     );

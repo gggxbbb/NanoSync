@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/services/vc_engine.dart';
+import '../../../shared/widgets/components/cards.dart';
 
 class DiffViewer extends StatefulWidget {
   final List<VcFileDiff> diffs;
@@ -84,52 +85,50 @@ class _DiffViewerState extends State<DiffViewer> {
   }
 
   Widget _buildFileDiffCard(VcFileDiff diff, bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Card(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    diff.relativePath,
-                    style: AppStyles.textStyleButton.copyWith(
-                      color: isDark ? Colors.white : Colors.black,
-                    ),
-                  ),
-                ),
-                Text(
-                  '+${diff.additions} -${diff.deletions}',
-                  style: AppStyles.textStyleCaption.copyWith(
-                    color: AppStyles.lightTextSecondary(isDark),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (diff.isBinary)
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppStyles.borderColor(isDark)),
-                  borderRadius: BorderRadius.circular(6),
-                ),
+    return AppCardSurface(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
                 child: Text(
-                  '二进制文件，暂不支持文本差异预览',
-                  style: AppStyles.textStyleBody.copyWith(
-                    color: AppStyles.lightTextSecondary(isDark),
+                  diff.relativePath,
+                  style: AppStyles.textStyleButton.copyWith(
+                    color: isDark ? Colors.white : Colors.black,
                   ),
                 ),
-              )
-            else if (_sideBySide)
-              _buildSideBySideDiff(diff, isDark)
-            else
-              _buildUnifiedDiff(diff, isDark),
-          ],
-        ),
+              ),
+              Text(
+                '+${diff.additions} -${diff.deletions}',
+                style: AppStyles.textStyleCaption.copyWith(
+                  color: AppStyles.lightTextSecondary(isDark),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (diff.isBinary)
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                border: Border.all(color: AppStyles.borderColor(isDark)),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                '二进制文件，暂不支持文本差异预览',
+                style: AppStyles.textStyleBody.copyWith(
+                  color: AppStyles.lightTextSecondary(isDark),
+                ),
+              ),
+            )
+          else if (_sideBySide)
+            _buildSideBySideDiff(diff, isDark)
+          else
+            _buildUnifiedDiff(diff, isDark),
+        ],
       ),
     );
   }

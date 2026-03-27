@@ -47,7 +47,22 @@ class DatabaseHelper {
   /// 创建数据库表
   Future<void> _onCreate(Database db, int version) async {
     await _createRepositoryCoreTables(db);
+    await _createRepositoryLocalSettingsTable(db);
     await _createSyncLogTables(db);
+  }
+
+  Future<void> _createRepositoryLocalSettingsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS repository_local_settings (
+        repository_id TEXT PRIMARY KEY,
+        max_versions INTEGER NOT NULL DEFAULT 10,
+        max_version_days INTEGER NOT NULL DEFAULT 30,
+        max_version_size_gb INTEGER NOT NULL DEFAULT 10,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (repository_id) REFERENCES registered_repositories(id) ON DELETE CASCADE
+      )
+    ''');
   }
 
   Future<void> _createRepositoryCoreTables(Database db) async {
@@ -154,6 +169,7 @@ class DatabaseHelper {
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 4) {
       await _createRepositoryCoreTables(db);
+      await _createRepositoryLocalSettingsTable(db);
 
       await db.execute('DROP TABLE IF EXISTS log_entries');
       await db.execute('DROP TABLE IF EXISTS sync_logs');
@@ -168,6 +184,10 @@ class DatabaseHelper {
 
       await db.execute('DROP INDEX IF EXISTS idx_targets_name');
       await db.execute('DROP TABLE IF EXISTS sync_targets');
+    }
+
+    if (oldVersion < 5) {
+      await _createRepositoryLocalSettingsTable(db);
     }
   }
 
@@ -296,6 +316,39 @@ class DatabaseHelper {
       'registered_repositories',
       where: 'id = ?',
       whereArgs: [id],
+    );
+  }
+
+  Future<int> upsertRepositoryLocalSettings(
+    Map<String, dynamic> settings,
+  ) async {
+    final db = await database;
+    return await db.insert(
+      'repository_local_settings',
+      settings,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<Map<String, dynamic>?> getRepositoryLocalSettings(
+    String repositoryId,
+  ) async {
+    final db = await database;
+    final results = await db.query(
+      'repository_local_settings',
+      where: 'repository_id = ?',
+      whereArgs: [repositoryId],
+      limit: 1,
+    );
+    return results.isNotEmpty ? results.first : null;
+  }
+
+  Future<int> deleteRepositoryLocalSettings(String repositoryId) async {
+    final db = await database;
+    return await db.delete(
+      'repository_local_settings',
+      where: 'repository_id = ?',
+      whereArgs: [repositoryId],
     );
   }
 

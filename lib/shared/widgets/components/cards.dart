@@ -1,6 +1,41 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import '../../../core/theme/app_theme.dart';
 
+class AppCardSurface extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry? margin;
+  final EdgeInsetsGeometry? padding;
+  final BorderRadiusGeometry? borderRadius;
+  final Color? borderColor;
+  final Color? backgroundColor;
+
+  const AppCardSurface({
+    super.key,
+    required this.child,
+    this.margin,
+    this.padding,
+    this.borderRadius,
+    this.borderColor,
+    this.backgroundColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = FluentTheme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      margin: margin ?? const EdgeInsets.only(bottom: 8),
+      padding: padding ?? const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: backgroundColor ?? AppStyles.cardBackground(isDark),
+        borderRadius: borderRadius ?? BorderRadius.circular(8),
+        border: Border.all(color: borderColor ?? AppStyles.borderColor(isDark)),
+      ),
+      child: child,
+    );
+  }
+}
+
 class SettingsCard extends StatelessWidget {
   final String? title;
   final String? subtitle;
@@ -77,6 +112,7 @@ class SettingsCard extends StatelessWidget {
       content = HoverButton(
         onPressed: onTap,
         builder: (context, states) => AnimatedContainer(
+          margin: const EdgeInsets.only(bottom: 8),
           duration: const Duration(milliseconds: 150),
           decoration: BoxDecoration(
             color: AppStyles.cardBackground(isDark),
@@ -91,14 +127,7 @@ class SettingsCard extends StatelessWidget {
         ),
       );
     } else {
-      content = Container(
-        decoration: BoxDecoration(
-          color: AppStyles.cardBackground(isDark),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppStyles.borderColor(isDark)),
-        ),
-        child: content,
-      );
+      content = AppCardSurface(padding: EdgeInsets.zero, child: content);
     }
 
     return content;
@@ -126,41 +155,37 @@ class InfoCard extends StatelessWidget {
     final theme = FluentTheme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Container(
-      decoration: AppStyles.cardDecoration(isDark),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color:
-                    iconBackground ??
-                    AppStyles.primaryColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: iconColor ?? AppStyles.primaryColor),
+    return AppCardSurface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color:
+                  iconBackground ??
+                  AppStyles.primaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
             ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: AppStyles.textStyleCaption.copyWith(
-                color: AppStyles.lightTextSecondary(isDark),
-              ),
+            child: Icon(icon, color: iconColor ?? AppStyles.primaryColor),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: AppStyles.textStyleCaption.copyWith(
+              color: AppStyles.lightTextSecondary(isDark),
             ),
-            const SizedBox(height: 4),
-            Text(
-              value ?? '-',
-              style: AppStyles.textStyleSubtitle.copyWith(
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white : Colors.black,
-              ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value ?? '-',
+            style: AppStyles.textStyleSubtitle.copyWith(
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white : Colors.black,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

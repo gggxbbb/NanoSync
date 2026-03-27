@@ -49,6 +49,8 @@
       "count": {"type": "int"}
     }
   },
+  "remoteSyncBehaviorTitle": "远程同步机制说明",
+  "remoteSyncBehaviorDescription": "NanoSync 不会直接把工作区文件原样上传到远端，仅同步 .nanosync 的版本对象与仓库元数据。这样可以避免远端被直接修改后与本地状态错位，导致仓库状态紊乱。",
   "fetch": "获取",
   "sync": "同步",
   "addRepositoryDialogTitle": "添加仓库",

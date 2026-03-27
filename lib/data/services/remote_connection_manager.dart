@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import '../database/database_helper.dart';
+import '../models/remote_directory_item.dart';
 import '../models/remote_connection.dart';
+import '../../core/constants/enums.dart';
 import 'smb_service.dart';
 import 'unc_service.dart';
 import 'webdav_service.dart';
@@ -220,5 +224,87 @@ class RemoteConnectionManager {
       repoRemote['remote_name'] as String,
     );
     return {...repoRemote, 'connection': conn};
+  }
+
+  bool supportsRemotePathBrowser(RemoteConnection connection) {
+    return connection.protocol == RemoteProtocol.webdav ||
+        connection.protocol == RemoteProtocol.unc ||
+        connection.protocol == RemoteProtocol.smb;
+  }
+
+  Future<List<RemoteDirectoryItem>> listRemoteDirectories({
+    required String connectionName,
+    required String remotePath,
+  }) async {
+    final connection = await getConnectionByName(connectionName);
+    if (connection == null) {
+      throw Exception('Connection not found: $connectionName');
+    }
+
+    switch (connection.protocol) {
+      case RemoteProtocol.webdav:
+        return _webdav.listDirectories(connection, remotePath: remotePath);
+      case RemoteProtocol.unc:
+        final entries = await _unc.listDirectory(
+          connection,
+          remotePath: remotePath,
+        );
+        final items = <RemoteDirectoryItem>[];
+        for (final entry in entries) {
+          final stat = await entry.stat();
+          if (stat.type != FileSystemEntityType.directory) {
+            continue;
+          }
+          final name = entry.uri.pathSegments.isNotEmpty
+              ? entry.uri.pathSegments.lastWhere(
+                  (s) => s.isNotEmpty,
+                  orElse: () => '',
+                )
+              : '';
+          if (name.isEmpty) {
+            continue;
+          }
+          final normalizedPath = _joinRemotePath(remotePath, name);
+          items.add(RemoteDirectoryItem(name: name, path: normalizedPath));
+        }
+        items.sort((a, b) => a.name.compareTo(b.name));
+        return items;
+      case RemoteProtocol.smb:
+        return _smb.listDirectories(connection, remotePath: remotePath);
+    }
+  }
+
+  Future<void> createRemoteDirectory({
+    required String connectionName,
+    required String remotePath,
+  }) async {
+    final connection = await getConnectionByName(connectionName);
+    if (connection == null) {
+      throw Exception('Connection not found: $connectionName');
+    }
+
+    switch (connection.protocol) {
+      case RemoteProtocol.webdav:
+        await _webdav.createDirectoryForConnection(connection, remotePath);
+        break;
+      case RemoteProtocol.unc:
+        await _unc.createDirectory(connection, remotePath);
+        break;
+      case RemoteProtocol.smb:
+        await _smb.createDirectory(connection, remotePath);
+        break;
+    }
+  }
+
+  String _joinRemotePath(String base, String folderName) {
+    final normalizedBase = base.trim().isEmpty ? '/' : base.trim();
+    final slashBase = normalizedBase.replaceAll('\\', '/');
+    final compactBase = slashBase.endsWith('/')
+        ? slashBase.substring(0, slashBase.length - 1)
+        : slashBase;
+    if (compactBase.isEmpty || compactBase == '/') {
+      return '/$folderName';
+    }
+    return '$compactBase/$folderName';
   }
 }

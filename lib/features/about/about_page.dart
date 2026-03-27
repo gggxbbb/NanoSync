@@ -2,6 +2,7 @@ import '../../core/theme/app_theme.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../../core/constants/app_constants.dart';
 import '../../l10n/l10n.dart';
+import '../../shared/widgets/components/cards.dart';
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
@@ -89,60 +90,58 @@ class AboutPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 32),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              FluentIcons.check_mark,
-                              size: 16,
-                              color: AppStyles.successColor,
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              context.l10n.mainFeatures,
-                              style: AppStyles.textStyleSubtitle.copyWith(
-                                color: primaryTextColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        ..._features.map(
-                          (f) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  margin: const EdgeInsets.only(top: 6),
-                                  decoration: BoxDecoration(
-                                    color: AppStyles.primaryColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    f,
-                                    style: AppStyles.textStyleBody.copyWith(
-                                      fontSize: 13,
-                                      color: primaryTextColor,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                AppCardSurface(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            FluentIcons.check_mark,
+                            size: 16,
+                            color: AppStyles.successColor,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            context.l10n.mainFeatures,
+                            style: AppStyles.textStyleSubtitle.copyWith(
+                              color: primaryTextColor,
                             ),
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      ..._features.map(
+                        (f) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                margin: const EdgeInsets.only(top: 6),
+                                decoration: BoxDecoration(
+                                  color: AppStyles.primaryColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  f,
+                                  style: AppStyles.textStyleBody.copyWith(
+                                    fontSize: 13,
+                                    color: primaryTextColor,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 24),

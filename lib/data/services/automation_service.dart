@@ -1,4 +1,3 @@
-import 'package:uuid/uuid.dart';
 import 'package:sqflite/sqflite.dart';
 import '../database/database_helper.dart';
 import '../models/automation_models.dart';
@@ -32,6 +31,8 @@ class AutomationService {
         commit_on_change INTEGER DEFAULT 0,
         push_after_commit INTEGER DEFAULT 0,
         debounce_seconds INTEGER,
+        retry_count INTEGER NOT NULL DEFAULT 3,
+        retry_delay_seconds INTEGER NOT NULL DEFAULT 5,
         commit_message_template TEXT,
         created_at TEXT NOT NULL,
         last_triggered_at TEXT,
@@ -39,6 +40,32 @@ class AutomationService {
         FOREIGN KEY (repository_id) REFERENCES registered_repositories(id)
       )
     ''');
+
+    await _ensureColumn(
+      db,
+      table: 'automation_rules',
+      column: 'retry_count',
+      definition: 'INTEGER NOT NULL DEFAULT 3',
+    );
+    await _ensureColumn(
+      db,
+      table: 'automation_rules',
+      column: 'retry_delay_seconds',
+      definition: 'INTEGER NOT NULL DEFAULT 5',
+    );
+  }
+
+  Future<void> _ensureColumn(
+    Database db, {
+    required String table,
+    required String column,
+    required String definition,
+  }) async {
+    final columns = await db.rawQuery('PRAGMA table_info($table)');
+    final exists = columns.any((c) => c['name'] == column);
+    if (!exists) {
+      await db.execute('ALTER TABLE $table ADD COLUMN $column $definition');
+    }
   }
 
   /// Create or update an automation rule
@@ -131,6 +158,16 @@ class AutomationService {
     return List<AutomationRule>.from(
       maps.map((x) => AutomationRule.fromMap(x)),
     );
+  }
+
+  Future<bool> hasEnabledRules() async {
+    await initializeAutomationTables();
+    final db = await _db.database;
+    final rows = await db.rawQuery(
+      'SELECT COUNT(1) AS cnt FROM automation_rules WHERE enabled = 1',
+    );
+    final count = (rows.first['cnt'] as num?)?.toInt() ?? 0;
+    return count > 0;
   }
 
   /// Resolve commit message template with variables

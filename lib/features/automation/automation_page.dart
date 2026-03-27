@@ -1,12 +1,13 @@
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide ComboBoxItem;
 import 'package:flutter/material.dart' show ScaffoldMessenger, SnackBar;
 import 'package:provider/provider.dart';
 import '../../data/models/automation_models.dart';
 import '../../data/services/automation_service.dart';
+import '../../data/services/automation_runner.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/providers/vc_repository_provider.dart';
+import '../../shared/widgets/components/cards.dart';
 import '../../shared/widgets/components/safe_combo_box.dart';
-import '../../l10n/l10n.dart';
 import 'package:uuid/uuid.dart';
 
 class AutomationPage extends StatefulWidget {
@@ -60,6 +61,15 @@ class _AutomationPageState extends State<AutomationPage> {
     }
   }
 
+  Future<void> _syncRunnerState() async {
+    final hasEnabled = await _automationService.hasEnabledRules();
+    if (hasEnabled) {
+      await AutomationRunner.instance.start();
+    } else {
+      AutomationRunner.instance.stop();
+    }
+  }
+
   void _showError(String message) {
     showDialog(
       context: context,
@@ -95,6 +105,7 @@ class _AutomationPageState extends State<AutomationPage> {
         repositoryName: repoName,
         onSave: (rule) async {
           await _automationService.saveAutomationRule(rule);
+          await _syncRunnerState();
           _showSuccess('自动化规则已创建');
           if (mounted) {
             Navigator.pop(context);
@@ -119,6 +130,7 @@ class _AutomationPageState extends State<AutomationPage> {
         initialRule: rule,
         onSave: (updatedRule) async {
           await _automationService.saveAutomationRule(updatedRule);
+          await _syncRunnerState();
           _showSuccess('自动化规则已更新');
           if (mounted) {
             Navigator.pop(context);
@@ -150,6 +162,7 @@ class _AutomationPageState extends State<AutomationPage> {
 
     if (confirmed == true) {
       await _automationService.deleteAutomationRule(rule.id);
+      await _syncRunnerState();
       _showSuccess('规则已删除');
       await _loadRules();
     }
@@ -157,6 +170,7 @@ class _AutomationPageState extends State<AutomationPage> {
 
   Future<void> _toggleRule(AutomationRule rule) async {
     await _automationService.setAutomationRuleEnabled(rule.id, !rule.enabled);
+    await _syncRunnerState();
     await _loadRules();
   }
 
@@ -289,20 +303,14 @@ class _AutomationPageState extends State<AutomationPage> {
   }
 
   Widget _buildRuleCard(AutomationRule rule, bool isDark) {
-    final theme = FluentTheme.of(context);
     final triggerLabel = rule.triggerType == AutomationTriggerType.timeBased
         ? '定时 (${rule.intervalMinutes} 分钟)'
         : '修改时触发';
-    final actionLabel = rule.actionType.toString().split('.').last;
+    final actionLabel = _actionTypeLabel(rule.actionType);
 
-    return Container(
-      margin: const EdgeInsets.all(8),
+    return AppCardSurface(
+      margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(color: AppStyles.borderColor(isDark)),
-        borderRadius: BorderRadius.circular(8),
-        color: AppStyles.hoverBackground(isDark),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -430,6 +438,21 @@ class _AutomationPageState extends State<AutomationPage> {
     );
   }
 
+  String _actionTypeLabel(AutomationActionType type) {
+    switch (type) {
+      case AutomationActionType.commit:
+        return '自动提交';
+      case AutomationActionType.push:
+        return '自动推送';
+      case AutomationActionType.commitAndPush:
+        return '提交并推送';
+      case AutomationActionType.pull:
+        return '自动拉取';
+      case AutomationActionType.sync:
+        return '双向同步';
+    }
+  }
+
   Widget _buildBadge(String text, Color bgColor, bool isDark) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -493,6 +516,8 @@ class _AutomationRuleDialogState extends State<_AutomationRuleDialog> {
   late AutomationActionType _actionType;
   late int _intervalMinutes;
   late int _debounceSeconds;
+  late int _retryCount;
+  late int _retryDelaySeconds;
   late bool _autoCommitOnInterval;
   late bool _autoPushOnInterval;
   late bool _commitOnChange;
@@ -524,6 +549,8 @@ class _AutomationRuleDialogState extends State<_AutomationRuleDialog> {
     _actionType = rule?.actionType ?? AutomationActionType.commit;
     _intervalMinutes = rule?.intervalMinutes ?? 30;
     _debounceSeconds = rule?.debounceSeconds ?? 300;
+    _retryCount = rule?.retryCount ?? 3;
+    _retryDelaySeconds = rule?.retryDelaySeconds ?? 5;
     _autoCommitOnInterval = rule?.autoCommitOnInterval ?? true;
     _autoPushOnInterval = rule?.autoPushOnInterval ?? false;
     _commitOnChange = rule?.commitOnChange ?? false;
@@ -564,6 +591,30 @@ class _AutomationRuleDialogState extends State<_AutomationRuleDialog> {
     );
 
     return preview;
+  }
+
+  String _actionTypeLabel(AutomationActionType type) {
+    switch (type) {
+      case AutomationActionType.commit:
+        return '自动提交';
+      case AutomationActionType.push:
+        return '自动推送';
+      case AutomationActionType.commitAndPush:
+        return '提交并推送';
+      case AutomationActionType.pull:
+        return '自动拉取';
+      case AutomationActionType.sync:
+        return '双向同步';
+    }
+  }
+
+  List<AutomationActionType> get _availableActionTypes {
+    if (_triggerType == AutomationTriggerType.changeBased) {
+      return AutomationActionType.values
+          .where((t) => t != AutomationActionType.sync)
+          .toList();
+    }
+    return AutomationActionType.values;
   }
 
   void _insertVariable(String variable) {
@@ -623,6 +674,8 @@ class _AutomationRuleDialogState extends State<_AutomationRuleDialog> {
       debounceSeconds: _triggerType == AutomationTriggerType.changeBased
           ? _debounceSeconds
           : null,
+      retryCount: _retryCount,
+      retryDelaySeconds: _retryDelaySeconds,
       commitMessageTemplate: _templateController.text.trim(),
       createdAt: widget.initialRule?.createdAt ?? now,
       lastTriggeredAt: widget.initialRule?.lastTriggeredAt,
@@ -675,9 +728,9 @@ class _AutomationRuleDialogState extends State<_AutomationRuleDialog> {
                     checked: _triggerType == AutomationTriggerType.timeBased,
                     onChanged: (value) {
                       if (value) {
-                        setState(
-                          () => _triggerType = AutomationTriggerType.timeBased,
-                        );
+                        setState(() {
+                          _triggerType = AutomationTriggerType.timeBased;
+                        });
                       }
                     },
                     child: const Text('定时触发'),
@@ -689,10 +742,12 @@ class _AutomationRuleDialogState extends State<_AutomationRuleDialog> {
                     checked: _triggerType == AutomationTriggerType.changeBased,
                     onChanged: (value) {
                       if (value) {
-                        setState(
-                          () =>
-                              _triggerType = AutomationTriggerType.changeBased,
-                        );
+                        setState(() {
+                          _triggerType = AutomationTriggerType.changeBased;
+                          if (_actionType == AutomationActionType.sync) {
+                            _actionType = AutomationActionType.commitAndPush;
+                          }
+                        });
                       }
                     },
                     child: const Text('修改时触发'),
@@ -700,6 +755,42 @@ class _AutomationRuleDialogState extends State<_AutomationRuleDialog> {
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+
+            Text(
+              '执行动作',
+              style: AppStyles.textStyleCaption.copyWith(
+                color: isDark ? Colors.grey[100] : Colors.grey[140],
+              ),
+            ),
+            const SizedBox(height: 6),
+            SafeComboBox<AutomationActionType>(
+              value: _actionType,
+              isExpanded: true,
+              items: _availableActionTypes
+                  .map(
+                    (type) => ComboBoxItem(
+                      value: type,
+                      child: Text(_actionTypeLabel(type)),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _actionType = value);
+                }
+              },
+            ),
+            if (_triggerType == AutomationTriggerType.changeBased)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  '提示：修改时触发无法感知远端变更，因此不支持“双向同步”。',
+                  style: AppStyles.textStyleCaption.copyWith(
+                    color: AppStyles.lightTextSecondary(isDark),
+                  ),
+                ),
+              ),
             const SizedBox(height: 12),
 
             // 触发条件配置
@@ -795,6 +886,50 @@ class _AutomationRuleDialogState extends State<_AutomationRuleDialog> {
                 ],
               ),
             ],
+            const SizedBox(height: 20),
+
+            Text(
+              '失败重试',
+              style: AppStyles.textStyleCaption.copyWith(
+                color: isDark ? Colors.grey[100] : Colors.grey[140],
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  child: InfoLabel(
+                    label: '重试次数',
+                    child: NumberBox(
+                      value: _retryCount.toDouble(),
+                      min: 1,
+                      max: 10,
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _retryCount = value.toInt());
+                        }
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: InfoLabel(
+                    label: '等待秒数',
+                    child: NumberBox(
+                      value: _retryDelaySeconds.toDouble(),
+                      min: 0,
+                      max: 300,
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _retryDelaySeconds = value.toInt());
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 20),
 
             // Commit Message 模板区域

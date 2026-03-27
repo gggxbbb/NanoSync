@@ -1,4 +1,4 @@
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide ComboBoxItem;
 import 'package:provider/provider.dart';
 import '../../data/models/vc_models.dart';
 import '../../data/services/vc_engine.dart';
@@ -324,6 +324,7 @@ class _VersionControlPageState extends State<VersionControlPage> {
                   .toList(),
               onChanged: (value) {
                 if (value != null) {
+                  vcProvider.selectRepository(value);
                   _bindRepository(value);
                 }
               },

@@ -9,7 +9,7 @@ class AppConstants {
 
   // 数据库
   static const String databaseName = 'nanosync.db';
-  static const int databaseVersion = 4;
+  static const int databaseVersion = 5;
 
   // 版本存储
   static const String versionsFolder = '.nanosync_versions';

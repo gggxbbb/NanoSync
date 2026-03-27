@@ -94,6 +94,13 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get remoteSyncBehaviorTitle => '远程同步机制说明';
+
+  @override
+  String get remoteSyncBehaviorDescription =>
+      'NanoSync 不会直接把工作区文件原样上传到远端，仅同步 .nanosync 的版本对象与仓库元数据。这样可以避免远端被直接修改后与本地状态错位，导致仓库状态紊乱。';
+
+  @override
   String get fetch => '获取';
 
   @override

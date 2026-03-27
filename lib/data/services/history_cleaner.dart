@@ -6,15 +6,22 @@ import '../models/sync_result.dart';
 import '../models/vc_models.dart';
 import '../vc_database.dart';
 import 'repository_manager.dart';
+import 'repository_local_settings_service.dart';
 
 class HistoryCleaner {
   static HistoryCleaner? _instance;
   final VcDatabase _vcDb;
   final RepositoryManager _repoManager;
+  final RepositoryLocalSettingsService _localSettings;
 
-  HistoryCleaner._({VcDatabase? vcDb, RepositoryManager? repoManager})
-    : _vcDb = vcDb ?? VcDatabase.instance,
-      _repoManager = repoManager ?? RepositoryManager.instance;
+  HistoryCleaner._({
+    VcDatabase? vcDb,
+    RepositoryManager? repoManager,
+    RepositoryLocalSettingsService? localSettings,
+  }) : _vcDb = vcDb ?? VcDatabase.instance,
+       _repoManager = repoManager ?? RepositoryManager.instance,
+       _localSettings =
+           localSettings ?? RepositoryLocalSettingsService.instance;
 
   static HistoryCleaner get instance {
     _instance ??= HistoryCleaner._();
@@ -71,8 +78,15 @@ class HistoryCleaner {
         return const CleanupResult(error: 'Repository config not found');
       }
 
+      final local = await _localSettings.getSettings(repo.id);
+      final effectiveHistory = config.history.copyWith(
+        maxCount: local.maxVersions,
+        maxDays: local.maxVersionDays,
+        maxSizeMb: local.maxVersionSizeGB * 1024,
+      );
+
       final stats = await calculateStats(repo);
-      if (!needsCleanup(config.history, stats)) {
+      if (!needsCleanup(effectiveHistory, stats)) {
         return const CleanupResult(success: true);
       }
 
@@ -81,7 +95,7 @@ class HistoryCleaner {
         return const CleanupResult(success: true);
       }
 
-      final commitsToKeep = _selectCommitsToKeep(commits, config.history);
+      final commitsToKeep = _selectCommitsToKeep(commits, effectiveHistory);
       final commitsToDelete = commits
           .where((c) => !commitsToKeep.contains(c.id))
           .toList();

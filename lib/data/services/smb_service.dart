@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:smb_connect/smb_connect.dart';
+import '../models/remote_directory_item.dart';
 import '../models/remote_connection.dart';
 
 /// SMB connection and file operation service.
@@ -143,6 +144,49 @@ class SmbService {
     await _client!.delete(remote);
   }
 
+  Future<List<RemoteDirectoryItem>> listDirectories(
+    RemoteConnection connection, {
+    String remotePath = '/',
+  }) async {
+    await _ensureConnected(connection);
+
+    final normalized = _normalizeRemotePath(remotePath);
+    final segments = normalized.split('/').where((s) => s.isNotEmpty).toList();
+
+    // SMB root: list shares as first-level directories.
+    if (segments.isEmpty) {
+      final shares = await _client!.listShares();
+      final items = <RemoteDirectoryItem>[];
+      for (final share in shares) {
+        final name = _extractShareName(share);
+        if (name.isEmpty) continue;
+        items.add(RemoteDirectoryItem(name: name, path: '/$name'));
+      }
+      items.sort((a, b) => a.name.compareTo(b.name));
+      return items;
+    }
+
+    // smb_connect does not currently expose a stable directory-list API across versions.
+    // Keep picker usable by allowing share selection and manual deeper input.
+    return const <RemoteDirectoryItem>[];
+  }
+
+  Future<void> createDirectory(
+    RemoteConnection connection,
+    String remotePath,
+  ) async {
+    await _ensureConnected(connection);
+    final normalizedRemotePath = _requireSharePath(remotePath);
+    try {
+      await _client!.createFolder(normalizedRemotePath);
+    } catch (_) {
+      final existing = await _client!.file(normalizedRemotePath);
+      if (!existing.isExists || !existing.isDirectory()) {
+        rethrow;
+      }
+    }
+  }
+
   Future<void> _ensureRemoteDirectory(String remotePath) async {
     final normalized = _requireSharePath(remotePath);
     final segments = normalized.split('/').where((s) => s.isNotEmpty).toList();
@@ -204,5 +248,22 @@ class SmbService {
       collapsed = collapsed.substring(0, collapsed.length - 1);
     }
     return collapsed;
+  }
+
+  String _extractShareName(dynamic share) {
+    if (share is String) {
+      return share;
+    }
+    try {
+      final dynamicName = share.name;
+      if (dynamicName is String) {
+        return dynamicName;
+      }
+    } catch (_) {}
+    final asString = share.toString();
+    if (asString.startsWith('Instance of')) {
+      return '';
+    }
+    return asString;
   }
 }

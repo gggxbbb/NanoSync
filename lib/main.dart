@@ -6,6 +6,8 @@ import 'package:window_manager/window_manager.dart';
 import 'l10n/app_localizations.dart';
 import 'core/theme/app_theme.dart';
 import 'data/vc_database.dart';
+import 'data/services/automation_service.dart';
+import 'data/services/automation_runner.dart';
 import 'shared/providers/vc_repository_provider.dart';
 import 'shared/widgets/app_shell.dart';
 
@@ -35,6 +37,12 @@ void main() async {
 
   // Pre-initialize version control database to ensure schema is ready.
   await VcDatabase.instance.database;
+
+  // Only start automation executor when user has explicitly enabled rules.
+  final hasEnabledRules = await AutomationService.instance.hasEnabledRules();
+  if (hasEnabledRules) {
+    await AutomationRunner.instance.start();
+  }
 
   runApp(
     MultiProvider(

@@ -1782,6 +1782,14 @@ class VcEngine {
       final rule = rawRule.trim().replaceAll('\\', '/');
       if (rule.isEmpty) continue;
 
+      final regex = _parseRegexRule(rule);
+      if (regex != null) {
+        if (regex.hasMatch(path)) {
+          return true;
+        }
+        continue;
+      }
+
       if (rule.endsWith('/')) {
         final prefix = rule.substring(0, rule.length - 1);
         if (path == prefix || path.startsWith('$prefix/')) {
@@ -1802,6 +1810,27 @@ class VcEngine {
     }
 
     return false;
+  }
+
+  RegExp? _parseRegexRule(String rule) {
+    var body = '';
+    if (rule.startsWith('regex:')) {
+      body = rule.substring('regex:'.length).trim();
+    } else if (rule.startsWith('re:')) {
+      body = rule.substring('re:'.length).trim();
+    } else if (rule.length > 2 && rule.startsWith('/') && rule.endsWith('/')) {
+      body = rule.substring(1, rule.length - 1).trim();
+    }
+
+    if (body.isEmpty) {
+      return null;
+    }
+
+    try {
+      return RegExp(body);
+    } catch (_) {
+      return null;
+    }
   }
 
   RegExp _globToRegex(String pattern) {

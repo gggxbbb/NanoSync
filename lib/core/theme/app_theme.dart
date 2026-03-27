@@ -24,9 +24,9 @@ class AppStyles {
   static Color lightTextPrimary(Color? color) => color ?? Colors.black;
   static Color darkTextPrimary(Color? color) => color ?? Colors.white;
   static Color lightTextSecondary(bool isDark) =>
-      isDark ? Colors.grey[100] : Colors.grey[140];
+      isDark ? const Color(0xFFB8B8B8) : const Color(0xFF666666);
   static Color lightTextTertiary(bool isDark) =>
-      isDark ? Colors.grey[120] : Colors.grey[140];
+      isDark ? const Color(0xFF999999) : const Color(0xFF7A7A7A);
 
   // ============ 边框颜色 ============
   static Color borderColor(bool isDark) =>
@@ -35,6 +35,20 @@ class AppStyles {
       isDark ? const Color(0xFF404040) : const Color(0xFFE5E5E5);
   static Color hoverBorderColor(bool isDark) =>
       isDark ? const Color(0xFF555555) : const Color(0xFFBBBBBB);
+
+  // ============ 下拉框颜色（统一 WinUI 风格） ============
+  static Color dropdownDefaultBackground(bool isDark) =>
+      isDark ? const Color(0xFF2A2A2A) : Colors.white;
+  static Color dropdownHoverBackground(bool isDark) =>
+      isDark ? const Color(0xFF383838) : const Color(0xFFF8F8F8);
+  static Color dropdownOpenBackground(bool isDark) =>
+      isDark ? const Color(0xFF313131) : Colors.white;
+  static Color dropdownMenuBackground(bool isDark) =>
+      isDark ? const Color(0xFF232323) : Colors.white;
+  static Color dropdownHoverBorder(bool isDark) =>
+      isDark ? const Color(0xFF5A5A5A) : const Color(0xFF8A8A8A);
+  static Color dropdownItemHover(bool isDark) =>
+      isDark ? const Color(0xFF404040) : const Color(0xFFF2F2F2);
 
   // ============ 背景样式 ============
   static Color cardBackground(bool isDark) => isDark
@@ -117,7 +131,7 @@ class AppStyles {
 
   // ============ 图标颜色 ============
   static Color iconColor(bool isDark, {Color? customColor}) =>
-      customColor ?? (isDark ? Colors.grey[140] : Colors.grey[140]);
+      customColor ?? lightTextSecondary(isDark);
 
   static Color iconColorPrimary() => primaryColor;
 
@@ -136,7 +150,7 @@ class AppStyles {
     brightness: Brightness.light,
     accentColor: fluentAccentColor,
     scaffoldBackgroundColor: Colors.transparent,
-    cardColor: Colors.transparent,
+    cardColor: cardBackground(false),
     navigationPaneTheme: NavigationPaneThemeData(
       backgroundColor: Colors.transparent,
       overlayBackgroundColor: Colors.transparent,
@@ -164,7 +178,7 @@ class AppStyles {
     brightness: Brightness.dark,
     accentColor: fluentAccentColor,
     scaffoldBackgroundColor: Colors.transparent,
-    cardColor: Colors.transparent,
+    cardColor: cardBackground(true),
     navigationPaneTheme: NavigationPaneThemeData(
       backgroundColor: Colors.transparent,
       overlayBackgroundColor: Colors.transparent,

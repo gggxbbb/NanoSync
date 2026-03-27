@@ -52,7 +52,11 @@ class NewSyncEngine {
        _webdav = webdav ?? WebDAVService(),
        _vcSync = vcSync ?? VcSyncService();
 
-  Future<FetchResult> fetch(Repository repo, {String? remoteName}) async {
+  Future<FetchResult> fetch(
+    Repository repo, {
+    String? remoteName,
+    bool recordLog = true,
+  }) async {
     final startedAt = DateTime.now();
     String? resolvedRemoteId;
     String fetchError = '';
@@ -134,22 +138,24 @@ class NewSyncEngine {
       return FetchResult(error: e.toString());
     } finally {
       final localHead = await _currentLocalHead(repo.id);
-      await _recordSyncLog(
-        repository: repo,
-        remoteId: resolvedRemoteId,
-        operation: 'fetch',
-        status: fetchError.isEmpty ? 'success' : 'failed',
-        startedAt: startedAt,
-        endedAt: DateTime.now(),
-        totalFiles: aheadCount + behindCount,
-        successCount: fetchError.isEmpty ? (aheadCount + behindCount) : 0,
-        failCount: fetchError.isEmpty ? 0 : 1,
-        errorMessage: fetchError.isEmpty ? null : fetchError,
-        remoteHeadCommitId: remoteHeadCommitId,
-        localHeadCommitId: localHead,
-        aheadCount: aheadCount,
-        behindCount: behindCount,
-      );
+      if (recordLog) {
+        await _recordSyncLog(
+          repository: repo,
+          remoteId: resolvedRemoteId,
+          operation: 'fetch',
+          status: fetchError.isEmpty ? 'success' : 'failed',
+          startedAt: startedAt,
+          endedAt: DateTime.now(),
+          totalFiles: aheadCount + behindCount,
+          successCount: fetchError.isEmpty ? (aheadCount + behindCount) : 0,
+          failCount: fetchError.isEmpty ? 0 : 1,
+          errorMessage: fetchError.isEmpty ? null : fetchError,
+          remoteHeadCommitId: remoteHeadCommitId,
+          localHeadCommitId: localHead,
+          aheadCount: aheadCount,
+          behindCount: behindCount,
+        );
+      }
       _disconnect();
     }
   }
@@ -185,6 +191,7 @@ class NewSyncEngine {
       final fetchResult = await fetch(
         repo,
         remoteName: remote['remote_name'] as String,
+        recordLog: false,
       );
       remoteHeadCommitId = fetchResult.remoteHead;
 
@@ -315,6 +322,7 @@ class NewSyncEngine {
       final fetchResult = await fetch(
         repo,
         remoteName: remote['remote_name'] as String,
+        recordLog: false,
       );
       remoteHeadCommitId = fetchResult.remoteHead;
       pulledCommits = fetchResult.behind;

@@ -1,8 +1,9 @@
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide ComboBoxItem;
 import '../../core/constants/enums.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/remote_connection.dart';
 import '../../data/services/remote_connection_manager.dart';
+import '../../shared/widgets/components/cards.dart';
 import '../../shared/widgets/components/safe_combo_box.dart';
 import '../../l10n/l10n.dart';
 
@@ -205,62 +206,59 @@ class _ConnectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = FluentTheme.of(context).brightness == Brightness.dark;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            Icon(
-              connection.protocol.value == 'smb'
-                  ? FluentIcons.server
-                  : connection.protocol.value == 'unc'
-                  ? FluentIcons.folder
-                  : FluentIcons.cloud,
-              size: 32,
-              color: isDark ? Colors.white : Colors.black,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    connection.name,
-                    style: AppStyles.textStyleSubtitle.copyWith(
-                      color: isDark ? Colors.white : Colors.black,
-                    ),
+    return AppCardSurface(
+      child: Row(
+        children: [
+          Icon(
+            connection.protocol.value == 'smb'
+                ? FluentIcons.server
+                : connection.protocol.value == 'unc'
+                ? FluentIcons.folder
+                : FluentIcons.cloud,
+            size: 32,
+            color: isDark ? Colors.white : Colors.black,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  connection.name,
+                  style: AppStyles.textStyleSubtitle.copyWith(
+                    color: isDark ? Colors.white : Colors.black,
                   ),
+                ),
+                Text(
+                  connection.displayAddress,
+                  style: AppStyles.textStyleCaption.copyWith(
+                    color: AppStyles.lightTextSecondary(isDark),
+                  ),
+                ),
+                if (connection.username.isNotEmpty &&
+                    connection.protocol != RemoteProtocol.unc)
                   Text(
-                    connection.displayAddress,
+                    '${context.l10n.user}: ${connection.username}',
                     style: AppStyles.textStyleCaption.copyWith(
                       color: AppStyles.lightTextSecondary(isDark),
                     ),
                   ),
-                  if (connection.username.isNotEmpty &&
-                      connection.protocol != RemoteProtocol.unc)
-                    Text(
-                      '${context.l10n.user}: ${connection.username}',
-                      style: AppStyles.textStyleCaption.copyWith(
-                        color: AppStyles.lightTextSecondary(isDark),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Row(
-              children: [
-                Button(child: Text(context.l10n.test), onPressed: onTest),
-                const SizedBox(width: 8),
-                Button(child: Text(context.l10n.edit), onPressed: onEdit),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: Icon(FluentIcons.delete, color: Colors.red),
-                  onPressed: onDelete,
-                ),
               ],
             ),
-          ],
-        ),
+          ),
+          Row(
+            children: [
+              Button(child: Text(context.l10n.test), onPressed: onTest),
+              const SizedBox(width: 8),
+              Button(child: Text(context.l10n.edit), onPressed: onEdit),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: Icon(FluentIcons.delete, color: Colors.red),
+                onPressed: onDelete,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

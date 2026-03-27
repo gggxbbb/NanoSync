@@ -1,6 +1,6 @@
 enum AutomationTriggerType { timeBased, changeBased }
 
-enum AutomationActionType { commit, push, commitAndPush }
+enum AutomationActionType { commit, push, commitAndPush, pull, sync }
 
 class AutomationRule {
   final String id;
@@ -19,6 +19,10 @@ class AutomationRule {
   final bool? commitOnChange;
   final bool? pushAfterCommit;
   final int? debounceSeconds; // debounce time before auto-commit on change
+
+  // Execution behavior
+  final int retryCount;
+  final int retryDelaySeconds;
 
   // Commit message template
   final String commitMessageTemplate;
@@ -39,6 +43,8 @@ class AutomationRule {
     this.commitOnChange,
     this.pushAfterCommit,
     this.debounceSeconds,
+    this.retryCount = 3,
+    this.retryDelaySeconds = 5,
     required this.commitMessageTemplate,
     required this.createdAt,
     this.lastTriggeredAt,
@@ -46,23 +52,36 @@ class AutomationRule {
   });
 
   factory AutomationRule.fromMap(Map<String, dynamic> map) {
+    final triggerIndex =
+        (map['trigger_type'] as int?) ?? AutomationTriggerType.timeBased.index;
+    final actionIndex =
+        (map['action_type'] as int?) ?? AutomationActionType.commit.index;
+
+    final resolvedTriggerType =
+        triggerIndex >= 0 && triggerIndex < AutomationTriggerType.values.length
+        ? AutomationTriggerType.values[triggerIndex]
+        : AutomationTriggerType.timeBased;
+
+    final resolvedActionType =
+        actionIndex >= 0 && actionIndex < AutomationActionType.values.length
+        ? AutomationActionType.values[actionIndex]
+        : AutomationActionType.commit;
+
     return AutomationRule(
       id: map['id'] as String,
       repositoryId: map['repository_id'] as String,
       name: map['name'] as String,
       enabled: (map['enabled'] as int?) == 1,
-      triggerType:
-          AutomationTriggerType.values[(map['trigger_type'] as int?) ??
-              AutomationTriggerType.timeBased.index],
-      actionType:
-          AutomationActionType.values[(map['action_type'] as int?) ??
-              AutomationActionType.commit.index],
+      triggerType: resolvedTriggerType,
+      actionType: resolvedActionType,
       intervalMinutes: map['interval_minutes'] as int?,
       autoCommitOnInterval: (map['auto_commit_on_interval'] as int?) == 1,
       autoPushOnInterval: (map['auto_push_on_interval'] as int?) == 1,
       commitOnChange: (map['commit_on_change'] as int?) == 1,
       pushAfterCommit: (map['push_after_commit'] as int?) == 1,
       debounceSeconds: map['debounce_seconds'] as int?,
+      retryCount: (map['retry_count'] as int?) ?? 3,
+      retryDelaySeconds: (map['retry_delay_seconds'] as int?) ?? 5,
       commitMessageTemplate: map['commit_message_template'] as String? ?? '',
       createdAt: DateTime.parse(map['created_at'] as String),
       lastTriggeredAt: map['last_triggered_at'] != null
@@ -86,6 +105,8 @@ class AutomationRule {
       'commit_on_change': commitOnChange == true ? 1 : 0,
       'push_after_commit': pushAfterCommit == true ? 1 : 0,
       'debounce_seconds': debounceSeconds,
+      'retry_count': retryCount,
+      'retry_delay_seconds': retryDelaySeconds,
       'commit_message_template': commitMessageTemplate,
       'created_at': createdAt.toIso8601String(),
       'last_triggered_at': lastTriggeredAt?.toIso8601String(),
@@ -106,6 +127,8 @@ class AutomationRule {
     bool? commitOnChange,
     bool? pushAfterCommit,
     int? debounceSeconds,
+    int? retryCount,
+    int? retryDelaySeconds,
     String? commitMessageTemplate,
     DateTime? createdAt,
     DateTime? lastTriggeredAt,
@@ -124,6 +147,8 @@ class AutomationRule {
       commitOnChange: commitOnChange ?? this.commitOnChange,
       pushAfterCommit: pushAfterCommit ?? this.pushAfterCommit,
       debounceSeconds: debounceSeconds ?? this.debounceSeconds,
+      retryCount: retryCount ?? this.retryCount,
+      retryDelaySeconds: retryDelaySeconds ?? this.retryDelaySeconds,
       commitMessageTemplate:
           commitMessageTemplate ?? this.commitMessageTemplate,
       createdAt: createdAt ?? this.createdAt,

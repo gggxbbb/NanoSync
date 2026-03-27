@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:webdav_client_plus/webdav_client_plus.dart';
+import '../models/remote_directory_item.dart';
 import '../models/remote_connection.dart';
 
 /// WebDAV连接与文件操作服务
@@ -153,6 +154,38 @@ class WebDAVService {
   Future<void> createRemoteDirectory(String remotePath) async {
     if (_client == null) throw Exception('未连接到WebDAV服务器');
     await _client!.mkdir(remotePath);
+  }
+
+  Future<void> createDirectoryForConnection(
+    RemoteConnection connection,
+    String remotePath,
+  ) async {
+    final client = _createClient(connection, '/');
+    final normalizedPath = _normalizePath(remotePath);
+    await client.mkdir(normalizedPath);
+  }
+
+  Future<List<RemoteDirectoryItem>> listDirectories(
+    RemoteConnection connection, {
+    String remotePath = '/',
+  }) async {
+    final client = _createClient(connection, '/');
+    final normalizedPath = _normalizePath(remotePath);
+    final entries = await client.readDir(normalizedPath);
+
+    final result = <RemoteDirectoryItem>[];
+    for (final entry in entries) {
+      if (entry.isDir != true) continue;
+      final name = entry.name.trim();
+      if (name.isEmpty || name == '.' || name == '..') continue;
+      final childPath = normalizedPath == '/'
+          ? '/$name'
+          : '${normalizedPath.endsWith('/') ? normalizedPath.substring(0, normalizedPath.length - 1) : normalizedPath}/$name';
+      result.add(RemoteDirectoryItem(name: name, path: childPath));
+    }
+
+    result.sort((a, b) => a.name.compareTo(b.name));
+    return result;
   }
 
   Future<void> _ensureRemoteDirectory(String remotePath) async {

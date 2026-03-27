@@ -17,12 +17,6 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool _autoStart = false;
   bool _minimizeToTray = true;
-  int _maxVersions = AppConstants.defaultMaxVersions;
-  int _maxVersionDays = AppConstants.defaultMaxVersionDays;
-  int _maxVersionSizeGB = AppConstants.defaultMaxVersionSizeGB;
-  int _retryCount = AppConstants.defaultRetryCount;
-  int _retryDelay = AppConstants.defaultRetryDelaySeconds;
-  int _realtimeDelay = AppConstants.defaultRealtimeDelaySeconds;
 
   @override
   Widget build(BuildContext context) {
@@ -119,111 +113,14 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             const SizedBox(height: 16),
             SettingsCard(
-              title: '版本管理',
-              icon: FluentIcons.history,
-              child: Column(
-                children: [
-                  SettingRow(
-                    label: '保留版本数',
-                    description: '每个文件保留的最大版本数量',
-                    trailing: SizedBox(
-                      width: 100,
-                      child: NumberBox(
-                        value: _maxVersions,
-                        onChanged: (v) =>
-                            setState(() => _maxVersions = v ?? _maxVersions),
-                        min: 1,
-                        max: 100,
-                      ),
-                    ),
-                  ),
-                  const SettingDivider(),
-                  SettingRow(
-                    label: '保留天数',
-                    description: '版本文件的保留天数',
-                    trailing: SizedBox(
-                      width: 100,
-                      child: NumberBox(
-                        value: _maxVersionDays,
-                        onChanged: (v) => setState(
-                          () => _maxVersionDays = v ?? _maxVersionDays,
-                        ),
-                        min: 1,
-                        max: 365,
-                      ),
-                    ),
-                  ),
-                  const SettingDivider(),
-                  SettingRow(
-                    label: '容量限制',
-                    description: '版本存储的最大容量（GB）',
-                    trailing: SizedBox(
-                      width: 100,
-                      child: NumberBox(
-                        value: _maxVersionSizeGB,
-                        onChanged: (v) => setState(
-                          () => _maxVersionSizeGB = v ?? _maxVersionSizeGB,
-                        ),
-                        min: 1,
-                        max: 1000,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            SettingsCard(
-              title: '同步设置',
-              icon: FluentIcons.sync,
-              child: Column(
-                children: [
-                  SettingRow(
-                    label: '重试次数',
-                    description: '同步失败时的重试次数',
-                    trailing: SizedBox(
-                      width: 100,
-                      child: NumberBox(
-                        value: _retryCount,
-                        onChanged: (v) =>
-                            setState(() => _retryCount = v ?? _retryCount),
-                        min: 0,
-                        max: 10,
-                      ),
-                    ),
-                  ),
-                  const SettingDivider(),
-                  SettingRow(
-                    label: '重试间隔',
-                    description: '重试之间的等待时间（秒）',
-                    trailing: SizedBox(
-                      width: 100,
-                      child: NumberBox(
-                        value: _retryDelay,
-                        onChanged: (v) =>
-                            setState(() => _retryDelay = v ?? _retryDelay),
-                        min: 1,
-                        max: 60,
-                      ),
-                    ),
-                  ),
-                  const SettingDivider(),
-                  SettingRow(
-                    label: '实时同步延迟',
-                    description: '实时同步的文件变更延迟（秒）',
-                    trailing: SizedBox(
-                      width: 100,
-                      child: NumberBox(
-                        value: _realtimeDelay,
-                        onChanged: (v) => setState(
-                          () => _realtimeDelay = v ?? _realtimeDelay,
-                        ),
-                        min: 1,
-                        max: 60,
-                      ),
-                    ),
-                  ),
-                ],
+              title: '配置说明',
+              icon: FluentIcons.info,
+              child: InfoBar(
+                severity: InfoBarSeverity.info,
+                title: const Text('版本保留与重试设置已下沉'),
+                content: const Text(
+                  '版本保留容量等参数改为每个仓库单独配置；重试次数/等待时间改为每个自动任务单独配置。\n这些设置仅保存在本机软件数据库中，不随仓库同步。',
+                ),
               ),
             ),
             const SizedBox(height: 16),

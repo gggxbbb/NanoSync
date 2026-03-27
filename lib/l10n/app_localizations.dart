@@ -237,6 +237,18 @@ abstract class AppLocalizations {
   /// **'{count} 个提交落后'**
   String commitsBehind(int count);
 
+  /// No description provided for @remoteSyncBehaviorTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'远程同步机制说明'**
+  String get remoteSyncBehaviorTitle;
+
+  /// No description provided for @remoteSyncBehaviorDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'NanoSync 不会直接把工作区文件原样上传到远端，仅同步 .nanosync 的版本对象与仓库元数据。这样可以避免远端被直接修改后与本地状态错位，导致仓库状态紊乱。'**
+  String get remoteSyncBehaviorDescription;
+
   /// No description provided for @fetch.
   ///
   /// In zh, this message translates to:
