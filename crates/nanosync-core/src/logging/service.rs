@@ -4,7 +4,6 @@ use crate::database::RepositoryDatabase;
 use crate::device::DeviceIdentity;
 use crate::error::Result;
 use crate::models::*;
-use std::path::Path;
 use tracing::info;
 
 /// 日志服务
@@ -78,7 +77,7 @@ impl LogService {
     }
 
     /// 清空日志
-    pub async fn clear_logs(&self, repo_db: Option<&RepositoryDatabase>) -> Result<i32> {
+    pub async fn clear_logs(&self, _repo_db: Option<&RepositoryDatabase>) -> Result<i32> {
         // TODO: 实现日志清空
         info!("日志已清空");
         Ok(0)
@@ -145,7 +144,7 @@ impl LogService {
     /// 获取日志统计
     pub async fn get_statistics(
         &self,
-        repo_db: Option<&RepositoryDatabase>,
+        _repo_db: Option<&RepositoryDatabase>,
     ) -> Result<LogStatistics> {
         // TODO: 实现日志统计
         Ok(LogStatistics {

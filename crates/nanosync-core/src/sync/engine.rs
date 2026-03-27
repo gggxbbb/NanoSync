@@ -8,7 +8,7 @@ use crate::repository::RepositoryManager;
 use crate::remote::RemoteConnectionManager;
 use std::path::Path;
 use std::sync::Arc;
-use tracing::{info, warn};
+use tracing::info;
 
 /// 同步引擎
 pub struct SyncEngine {
@@ -38,10 +38,10 @@ impl SyncEngine {
         &self,
         repository_id: i64,
         remote_name: Option<&str>,
-        record_log: bool,
+        _record_log: bool,
     ) -> Result<FetchResult> {
         let start_time = std::time::Instant::now();
-        let sync_id = crate::utils::hash::generate_uuid();
+        let _sync_id = crate::utils::hash::generate_uuid();
 
         info!("开始 fetch: 仓库 {}, 远端 {:?}", repository_id, remote_name);
 
@@ -63,7 +63,7 @@ impl SyncEngine {
         let remote = remote.ok_or_else(|| Error::SyncFailed("没有配置远端".to_string()))?;
 
         // 获取远程连接信息
-        let conn = self.remote_manager.get_connection(remote.connection_id).await?
+        let _conn = self.remote_manager.get_connection(remote.connection_id).await?
             .ok_or(Error::RemoteConnectionNotFound(remote.connection_id))?;
 
         // TODO: 实现真实的 fetch 逻辑
@@ -98,7 +98,7 @@ impl SyncEngine {
         repository_id: i64,
         remote_name: Option<&str>,
         force: bool,
-        record_log: bool,
+        _record_log: bool,
     ) -> Result<PushResult> {
         let start_time = std::time::Instant::now();
 
@@ -140,7 +140,7 @@ impl SyncEngine {
         &self,
         repository_id: i64,
         remote_name: Option<&str>,
-        record_log: bool,
+        _record_log: bool,
     ) -> Result<PullResult> {
         let start_time = std::time::Instant::now();
 
@@ -237,7 +237,7 @@ impl SyncEngine {
     }
 
     /// 获取同步状态
-    pub async fn get_sync_status(&self, repository_id: i64) -> Result<AheadBehind> {
+    pub async fn get_sync_status(&self, _repository_id: i64) -> Result<AheadBehind> {
         // TODO: 实现真实的 ahead/behind 计算
         Ok(AheadBehind {
             ahead: 0,

@@ -682,6 +682,187 @@ impl RepositoryDatabase {
         Ok(())
     }
 
+    /// 清空应用日志
+    pub async fn clear_app_logs(&self) -> Result<i64> {
+        let result = sqlx::query("DELETE FROM app_logs WHERE repository_id = ?")
+            .bind(self.repository_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(result.rows_affected() as i64)
+    }
+
+    // ========== 远端绑定删除 ==========
+
+    /// 删除远端绑定
+    pub async fn delete_repository_remote(&self, remote_name: &str) -> Result<()> {
+        sqlx::query("DELETE FROM repository_remotes WHERE repository_id = ? AND remote_name = ?")
+            .bind(self.repository_id)
+            .bind(remote_name)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    // ========== 对象索引管理 ==========
+
+    /// 获取对象索引（已提交文件状态）
+    pub async fn get_object_index(&self) -> Result<Vec<ObjectIndexEntry>> {
+        let rows = sqlx::query(
+            "SELECT path, object_hash, file_size, commit_id FROM object_index WHERE repository_id = ?"
+        )
+        .bind(self.repository_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut entries = Vec::new();
+        for row in rows {
+            entries.push(ObjectIndexEntry {
+                path: row.try_get("path")?,
+                object_hash: row.try_get("object_hash")?,
+                file_size: row.try_get("file_size")?,
+                commit_id: row.try_get("commit_id")?,
+            });
+        }
+        Ok(entries)
+    }
+
+    /// 更新对象索引（提交后调用）
+    pub async fn update_object_index(&self, entries: &[ObjectIndexEntry]) -> Result<()> {
+        for entry in entries {
+            sqlx::query(
+                "INSERT OR REPLACE INTO object_index (path, repository_id, object_hash, file_size, commit_id) VALUES (?, ?, ?, ?, ?)"
+            )
+            .bind(&entry.path)
+            .bind(self.repository_id)
+            .bind(&entry.object_hash)
+            .bind(entry.file_size)
+            .bind(&entry.commit_id)
+            .execute(&self.pool)
+            .await?;
+        }
+        Ok(())
+    }
+
+    /// 从对象索引中删除条目（文件删除时）
+    pub async fn remove_from_object_index(&self, path: &str) -> Result<()> {
+        sqlx::query("DELETE FROM object_index WHERE repository_id = ? AND path = ?")
+            .bind(self.repository_id)
+            .bind(path)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    // ========== Stash 管理 ==========
+
+    /// 添加 stash
+    pub async fn add_stash(&self, stash: &Stash) -> Result<()> {
+        let now = stash.created_at.to_rfc3339();
+        sqlx::query(
+            "INSERT INTO stashes (id, repository_id, name, message, commit_id, branch_name, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        )
+        .bind(&stash.id)
+        .bind(self.repository_id)
+        .bind(&stash.name)
+        .bind(&stash.message)
+        .bind(&stash.commit_id)
+        .bind(&stash.branch_name)
+        .bind(&now)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    /// 列出所有 stash
+    pub async fn list_stashes(&self) -> Result<Vec<Stash>> {
+        let rows = sqlx::query(
+            "SELECT * FROM stashes WHERE repository_id = ? ORDER BY created_at DESC"
+        )
+        .bind(self.repository_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut stashes = Vec::new();
+        for row in rows {
+            stashes.push(Stash {
+                id: row.try_get("id")?,
+                repository_id: self.repository_id,
+                name: row.try_get("name")?,
+                message: row.try_get("message")?,
+                commit_id: row.try_get("commit_id")?,
+                branch_name: row.try_get("branch_name")?,
+                created_at: chrono::DateTime::parse_from_rfc3339(&row.try_get::<String, _>("created_at")?)
+                    .map(|dt| dt.with_timezone(&chrono::Utc))?,
+            });
+        }
+        Ok(stashes)
+    }
+
+    /// 添加 stash 条目
+    pub async fn add_stash_entry(&self, entry: &StashEntry) -> Result<()> {
+        let change_type = serde_json::to_string(&entry.change_type)?;
+        sqlx::query(
+            "INSERT INTO stash_entries (id, stash_id, path, object_id, change_type) VALUES (?, ?, ?, ?, ?)"
+        )
+        .bind(&entry.id)
+        .bind(&entry.stash_id)
+        .bind(&entry.path)
+        .bind(&entry.object_id)
+        .bind(&change_type)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    /// 列出 stash 条目
+    pub async fn list_stash_entries(&self, stash_id: &str) -> Result<Vec<StashEntry>> {
+        let rows = sqlx::query(
+            "SELECT * FROM stash_entries WHERE stash_id = ?"
+        )
+        .bind(stash_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut entries = Vec::new();
+        for row in rows {
+            let change_type_str: String = row.try_get("change_type")?;
+            let change_type: ChangeType = serde_json::from_str(&change_type_str)?;
+            entries.push(StashEntry {
+                id: row.try_get("id")?,
+                stash_id: row.try_get("stash_id")?,
+                path: row.try_get("path")?,
+                object_id: row.try_get("object_id")?,
+                change_type,
+            });
+        }
+        Ok(entries)
+    }
+
+    /// 删除 stash
+    pub async fn delete_stash(&self, stash_id: &str) -> Result<()> {
+        sqlx::query("DELETE FROM stash_entries WHERE stash_id = ?")
+            .bind(stash_id)
+            .execute(&self.pool)
+            .await?;
+        sqlx::query("DELETE FROM stashes WHERE id = ?")
+            .bind(stash_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    // ========== 分支删除 ==========
+
+    /// 删除分支
+    pub async fn delete_branch(&self, name: &str) -> Result<()> {
+        sqlx::query("DELETE FROM branches WHERE repository_id = ? AND name = ?")
+            .bind(self.repository_id)
+            .bind(name)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
     /// 查询应用日志
     pub async fn query_app_logs(&self, query: &LogQueryRequest) -> Result<Vec<AppLogEntry>> {
         let mut sql = "SELECT * FROM app_logs WHERE repository_id = ?".to_string();

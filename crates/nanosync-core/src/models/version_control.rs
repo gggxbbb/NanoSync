@@ -178,7 +178,6 @@ pub struct Conflict {
     pub ours_commit_id: Option<String>,
     pub theirs_commit_id: Option<String>,
     pub base_commit_id: Option<String>,
-    pub resolution: Option<ConflictResolution>,
 }
 
 /// 冲突类型
@@ -191,16 +190,6 @@ pub enum ConflictType {
     BothModified,
     OursDeleted,
     TheirsDeleted,
-}
-
-/// 冲突解决策略
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ConflictResolution {
-    Ours,
-    Theirs,
-    Base,
-    Manual,
 }
 
 /// 提交请求
@@ -284,33 +273,42 @@ pub struct StashRequest {
     pub include_untracked: bool,
 }
 
+/// 对象索引条目（记录提交时的文件状态）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObjectIndexEntry {
+    pub path: String,
+    pub object_hash: String,
+    pub file_size: i64,
+    pub commit_id: String,
+}
+
 /// VC 同步记录
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VcSyncRecord {
     pub id: String,
     pub repository_id: i64,
     pub remote_name: String,
-    pub sync_type: SyncType,
+    pub sync_type: VcSyncType,
     pub start_time: DateTime<Utc>,
     pub end_time: Option<DateTime<Utc>>,
-    pub status: SyncStatus,
+    pub status: VcSyncStatus,
     pub error_message: Option<String>,
 }
 
-/// 同步类型
+/// VC 同步类型（区别于主模块的 SyncType）
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum SyncType {
+pub enum VcSyncType {
     Fetch,
     Push,
     Pull,
     Sync,
 }
 
-/// 同步状态
+/// VC 同步状态（区别于主模块的 SyncStatus）
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum SyncStatus {
+pub enum VcSyncStatus {
     Running,
     Success,
     Failed,

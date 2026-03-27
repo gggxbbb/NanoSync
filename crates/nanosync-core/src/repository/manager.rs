@@ -265,7 +265,7 @@ impl RepositoryManager {
     }
 
     /// 计算 ahead/behind
-    async fn calculate_ahead_behind(&self, _repo_db: &RepositoryDatabase, branch: &Option<Branch>) -> Result<(i32, i32)> {
+    async fn calculate_ahead_behind(&self, _repo_db: &RepositoryDatabase, _branch: &Option<Branch>) -> Result<(i32, i32)> {
         // TODO: 实现真实的 ahead/behind 计算
         // 需要对比本地分支和远端跟踪分支
         Ok((0, 0))

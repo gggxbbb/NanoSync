@@ -85,7 +85,7 @@ impl RemoteConnectionManager {
     }
 
     /// 测试 SMB 连接
-    async fn test_smb_connection(&self, conn: &RemoteConnection, _test_path: Option<&str>) -> Result<ConnectionTestResult> {
+    async fn test_smb_connection(&self, _conn: &RemoteConnection, _test_path: Option<&str>) -> Result<ConnectionTestResult> {
         // TODO: 实现真实的 SMB 连接测试
         // 使用 strictCredentialCheck 进行严格凭证校验
         
@@ -103,7 +103,7 @@ impl RemoteConnectionManager {
     }
 
     /// 测试 WebDAV 连接
-    async fn test_webdav_connection(&self, conn: &RemoteConnection, _test_path: Option<&str>) -> Result<ConnectionTestResult> {
+    async fn test_webdav_connection(&self, _conn: &RemoteConnection, _test_path: Option<&str>) -> Result<ConnectionTestResult> {
         // TODO: 实现真实的 WebDAV 连接测试
         // 包括 ping、目录访问、可写性验证
         

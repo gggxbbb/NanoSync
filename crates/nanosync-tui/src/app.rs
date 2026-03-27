@@ -6,7 +6,6 @@ use crate::client::IpcClient;
 use crossterm::event::KeyEvent;
 use nanosync_core::models::*;
 use nanosync_protocol::*;
-use pages::*;
 
 /// 当前页面
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -206,10 +205,26 @@ pub struct VersionControlPage {
     pub selected_repository: Option<i64>,
     pub status: Option<WorkingDirectoryStatus>,
     pub commits: Vec<Commit>,
+    pub selected_tab: usize,  // 0=状态, 1=提交历史
+    pub selected_index: usize,
 }
 
 impl VersionControlPage {
-    pub async fn handle_key(&mut self, _key: KeyEvent) -> anyhow::Result<()> {
+    pub async fn handle_key(&mut self, key: KeyEvent) -> anyhow::Result<()> {
+        match key.code {
+            crossterm::event::KeyCode::Tab => {
+                self.selected_tab = (self.selected_tab + 1) % 2;
+            }
+            crossterm::event::KeyCode::Up => {
+                if self.selected_index > 0 {
+                    self.selected_index -= 1;
+                }
+            }
+            crossterm::event::KeyCode::Down => {
+                self.selected_index = self.selected_index.saturating_add(1);
+            }
+            _ => {}
+        }
         Ok(())
     }
 }

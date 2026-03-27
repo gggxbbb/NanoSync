@@ -5,7 +5,6 @@
 use crate::database::schema;
 use crate::error::{Error, Result};
 use crate::models::*;
-use sqlx::Row;
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use std::path::Path;
 use tracing::info;

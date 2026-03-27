@@ -278,6 +278,19 @@ CREATE TABLE IF NOT EXISTS remote_tracking (
 
 CREATE INDEX IF NOT EXISTS idx_remote_tracking_repository ON remote_tracking(repository_id);
 
+-- 对象索引表（记录最后一次提交时各文件的状态）
+CREATE TABLE IF NOT EXISTS object_index (
+    path TEXT NOT NULL,
+    repository_id INTEGER NOT NULL,
+    object_hash TEXT NOT NULL,
+    file_size INTEGER NOT NULL DEFAULT 0,
+    commit_id TEXT NOT NULL,
+    PRIMARY KEY (repository_id, path)
+);
+
+CREATE INDEX IF NOT EXISTS idx_object_index_repository ON object_index(repository_id);
+CREATE INDEX IF NOT EXISTS idx_object_index_commit ON object_index(commit_id);
+
 -- 数据库版本表
 CREATE TABLE IF NOT EXISTS schema_version (
     version INTEGER PRIMARY KEY,

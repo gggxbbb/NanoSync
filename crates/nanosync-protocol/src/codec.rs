@@ -1,6 +1,6 @@
 //! IPC 编解码器
 
-use crate::{IpcMessage, MessageKind};
+use crate::IpcMessage;
 use std::io::{self, Read, Write};
 use thiserror::Error;
 
@@ -107,7 +107,7 @@ impl<R: Read> FramedReader<R> {
     pub fn read_message(&mut self) -> CodecResult<Option<IpcMessage>> {
         // 尝试读取长度前缀
         if self.buffer.len() < 4 {
-            let mut temp = [0u8; 4];
+            let _temp = [0u8; 4];
             let needed = 4 - self.buffer.len();
             let mut read_buf = vec![0u8; needed];
             
@@ -165,6 +165,7 @@ impl<R: Read> FramedReader<R> {
 mod tests {
     use super::*;
     use crate::command::PingCommand;
+    use crate::MessageKind;
 
     #[test]
     fn test_encode_decode() {

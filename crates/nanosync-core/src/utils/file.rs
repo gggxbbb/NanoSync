@@ -2,7 +2,7 @@
 
 use crate::error::Result;
 use std::path::Path;
-use std::io::{Read, Write};
+use std::io::Read;
 use walkdir::WalkDir;
 
 /// 读取文件为字符串
