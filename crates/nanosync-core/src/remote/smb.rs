@@ -142,6 +142,11 @@ impl SmbClient {
 
         Ok(entries)
     }
+
+    /// 检查远端文件是否存在
+    pub fn file_exists(&self, share: &str, remote_path: &str) -> bool {
+        self.share_unc_path(share, remote_path).exists()
+    }
 }
 
 /// 远程文件信息

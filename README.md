@@ -83,12 +83,17 @@ cargo run -p nanosync-tui
   - `fetch/pull` downloads missing objects from remote object index (`.nanosync/object_index.json`)
 - Pull metadata baseline:
   - Applies remote branch/default-branch state locally as minimal fast-forward metadata update
+- Pull working-tree baseline:
+  - Applies remote file index to working directory (write/update/delete)
+  - Synchronizes local repository object index with remote file index
+- Pull safety guard:
+  - Refuses pull metadata application when working directory has uncommitted changes
 
 ## Known Gaps
 
 - SMB protocol-level deep features (real share enumeration, strict auth verification) are still not fully implemented
 - Sync object transfer and robust conflict resolution are still in progress
-- Ahead/behind is currently a head-based minimal implementation, not full commit-graph traversal yet
+- Ahead/behind now supports DAG ancestor-distance calculation from local commit graph (best common ancestor by shortest combined distance)
 - Pull merge semantics are still minimal (metadata fast-forward + object download), not full content merge yet
 - Some clone/sync edge cases remain placeholders
 - Integration and end-to-end tests are still limited

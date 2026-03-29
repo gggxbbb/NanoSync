@@ -10,10 +10,13 @@ use crate::remote::smb::SmbClient;
 use crate::remote::unc::UncClient;
 use crate::remote::webdav::WebDavClient;
 use crate::utils::path::{ensure_object_parent_dir, object_path};
+use crate::version_control::VcEngine;
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, VecDeque};
 use std::path::Path;
 use std::sync::Arc;
 use tracing::info;
+use walkdir::WalkDir;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct RemoteObjectEntry {
@@ -24,7 +27,10 @@ struct RemoteObjectEntry {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct RemoteObjectIndex {
     generated_at: chrono::DateTime<chrono::Utc>,
+    #[serde(default)]
     objects: Vec<RemoteObjectEntry>,
+    #[serde(default)]
+    file_index: Vec<ObjectIndexEntry>,
 }
 
 /// 同步引擎
@@ -86,7 +92,9 @@ impl SyncEngine {
         let local_head = self.local_head_commit_id(&repo_db).await?;
         let remote_state = self.fetch_remote_repository_state(&conn, &remote.remote_path).await?;
         let remote_head = remote_state.as_ref().map(|s| s.head_commit_id.clone());
-        let ahead_behind = Self::calculate_ahead_behind(local_head.as_deref(), remote_head.as_deref());
+        let ahead_behind = self
+            .calculate_ahead_behind(&repo_db, local_head.as_deref(), remote_head.as_deref())
+            .await?;
         let (fetched_objects, fetched_size) = self
             .fetch_remote_objects(&conn, &remote.remote_path, repo_path, &repo_db)
             .await?;
@@ -220,11 +228,27 @@ impl SyncEngine {
         let conn = self.remote_manager.get_connection(remote.connection_id).await?
             .ok_or(Error::RemoteConnectionNotFound(remote.connection_id))?;
 
+        let vc_engine = VcEngine::new(repository_id, repo_path, self.device_identity.clone()).await?;
+        let wd_status = vc_engine.status().await?;
+        if !wd_status.is_clean {
+            return Err(Error::WorkingDirectoryDirty);
+        }
+
         if let Some(remote_state) = self
             .fetch_remote_repository_state(&conn, &remote.remote_path)
             .await?
         {
             self.apply_remote_repository_state(&repo_db, &remote_state).await?;
+        }
+
+        let mut conflict_count = 0_i32;
+        if let Some(remote_index) = self
+            .fetch_remote_repository_index(&conn, &remote.remote_path)
+            .await?
+        {
+            conflict_count = self
+                .apply_remote_file_index(repo_path, &repo_db, &remote_index.file_index)
+                .await?;
         }
 
         let duration_ms = start_time.elapsed().as_millis() as u64;
@@ -239,7 +263,7 @@ impl SyncEngine {
             pulled_size: fetch_result.fetched_size,
             fast_forwarded: true,
             merged: false,
-            conflicts: 0,
+            conflicts: conflict_count,
             duration_ms,
             success: true,
             error_message: None,
@@ -356,6 +380,74 @@ impl SyncEngine {
             format!(".nanosync/objects/{}/{}", sub, rest)
         } else {
             format!("{}/.nanosync/objects/{}/{}", base, sub, rest)
+        }
+    }
+
+    async fn fetch_remote_repository_index(
+        &self,
+        conn: &RemoteConnection,
+        remote_base: &str,
+    ) -> Result<Option<RemoteObjectIndex>> {
+        let protocol = conn
+            .get_protocol()
+            .map_err(|e| Error::InvalidConfig(e.to_string()))?;
+
+        match protocol {
+            Protocol::WebDav => {
+                let config = WebDavConfig::from_connection(conn, "/");
+                let client = WebDavClient::new(&config);
+                let index_path = Self::remote_object_index_path(remote_base);
+                if !client.file_exists(&index_path).await.unwrap_or(false) {
+                    return Ok(None);
+                }
+
+                let temp_index = std::env::temp_dir().join(format!(
+                    "nanosync-fetch-index-{}.json",
+                    crate::utils::hash::generate_uuid()
+                ));
+                client.download_file(&index_path, &temp_index).await?;
+                let content = std::fs::read_to_string(&temp_index)?;
+                let _ = std::fs::remove_file(&temp_index);
+                Ok(Some(serde_json::from_str(&content)?))
+            }
+            Protocol::Unc => {
+                let client = UncClient::new(&conn.host, None);
+                let index_path = Self::remote_object_index_path(remote_base).replace('/', "\\");
+                if !client.file_exists(&index_path) {
+                    return Ok(None);
+                }
+
+                let temp_index = std::env::temp_dir().join(format!(
+                    "nanosync-fetch-index-{}.json",
+                    crate::utils::hash::generate_uuid()
+                ));
+                client.download_file(&index_path, &temp_index).await?;
+                let content = std::fs::read_to_string(&temp_index)?;
+                let _ = std::fs::remove_file(&temp_index);
+                Ok(Some(serde_json::from_str(&content)?))
+            }
+            Protocol::Smb => {
+                let (share, base_path) = Self::parse_smb_share_and_base_path(remote_base)?;
+                let client = SmbClient::new(
+                    &conn.host,
+                    conn.port.unwrap_or(445) as u16,
+                    conn.username.as_deref(),
+                    conn.password.as_deref(),
+                );
+                let index_path = Self::remote_object_index_path(&base_path);
+
+                let temp_index = std::env::temp_dir().join(format!(
+                    "nanosync-fetch-index-{}.json",
+                    crate::utils::hash::generate_uuid()
+                ));
+                if client.download_file(&share, &index_path, &temp_index).await.is_err() {
+                    return Ok(None);
+                }
+
+                let content = std::fs::read_to_string(&temp_index)?;
+                let _ = std::fs::remove_file(&temp_index);
+                Ok(Some(serde_json::from_str(&content)?))
+            }
         }
     }
 
@@ -606,6 +698,7 @@ impl SyncEngine {
                 let index_content = RemoteObjectIndex {
                     generated_at: chrono::Utc::now(),
                     objects,
+                    file_index: repo_db.get_object_index().await?,
                 };
                 let temp_path = std::env::temp_dir().join(format!(
                     "nanosync-object-index-{}.json",
@@ -644,6 +737,7 @@ impl SyncEngine {
                 let index_content = RemoteObjectIndex {
                     generated_at: chrono::Utc::now(),
                     objects,
+                    file_index: repo_db.get_object_index().await?,
                 };
                 let temp_path = std::env::temp_dir().join(format!(
                     "nanosync-object-index-{}.json",
@@ -672,6 +766,9 @@ impl SyncEngine {
                     }
 
                     let remote_path = Self::remote_object_path(&base_path, &obj.hash);
+                    if client.file_exists(&share, &remote_path) {
+                        continue;
+                    }
                     if let Some(parent) = remote_path.rsplit_once('/') {
                         client.ensure_directory(&share, parent.0).await?;
                     }
@@ -684,6 +781,7 @@ impl SyncEngine {
                 let index_content = RemoteObjectIndex {
                     generated_at: chrono::Utc::now(),
                     objects,
+                    file_index: repo_db.get_object_index().await?,
                 };
                 let temp_path = std::env::temp_dir().join(format!(
                     "nanosync-object-index-{}.json",
@@ -812,39 +910,258 @@ impl SyncEngine {
         Ok((fetched_objects, fetched_size))
     }
 
-    fn calculate_ahead_behind(local_head: Option<&str>, remote_head: Option<&str>) -> AheadBehind {
-        match (local_head, remote_head) {
-            (Some(l), Some(r)) if !l.is_empty() && !r.is_empty() && l == r => AheadBehind {
-                ahead: 0,
-                behind: 0,
-                ahead_commits: vec![],
-                behind_commits: vec![],
-            },
-            (Some(l), Some(r)) if !l.is_empty() && !r.is_empty() => AheadBehind {
-                ahead: 1,
-                behind: 1,
-                ahead_commits: vec![l.to_string()],
-                behind_commits: vec![r.to_string()],
-            },
-            (Some(l), None) if !l.is_empty() => AheadBehind {
-                ahead: 1,
-                behind: 0,
-                ahead_commits: vec![l.to_string()],
-                behind_commits: vec![],
-            },
-            (None, Some(r)) if !r.is_empty() => AheadBehind {
-                ahead: 0,
-                behind: 1,
-                ahead_commits: vec![],
-                behind_commits: vec![r.to_string()],
-            },
-            _ => AheadBehind {
-                ahead: 0,
-                behind: 0,
-                ahead_commits: vec![],
-                behind_commits: vec![],
-            },
+    async fn apply_remote_file_index(
+        &self,
+        repo_path: &Path,
+        repo_db: &RepositoryDatabase,
+        remote_file_index: &[ObjectIndexEntry],
+    ) -> Result<i32> {
+        let mut conflicts = 0_i32;
+
+        let remote_map: HashMap<String, &ObjectIndexEntry> = remote_file_index
+            .iter()
+            .map(|e| (e.path.clone(), e))
+            .collect();
+
+        // 写入/更新远端存在的文件
+        for entry in remote_file_index {
+            let obj_path = object_path(repo_path, &entry.object_hash);
+            if !obj_path.exists() {
+                conflicts += 1;
+                continue;
+            }
+
+            let dst = repo_path.join(entry.path.replace('/', "\\"));
+            if let Some(parent) = dst.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            std::fs::copy(&obj_path, &dst)?;
         }
+
+        // 删除远端不存在的本地工作区文件（排除 .nanosync）
+        for entry in WalkDir::new(repo_path)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().is_file())
+        {
+            let rel = match entry.path().strip_prefix(repo_path) {
+                Ok(p) => p.to_string_lossy().replace('\\', "/"),
+                Err(_) => continue,
+            };
+
+            if rel.starts_with(".nanosync/") || rel == ".nanosync" {
+                continue;
+            }
+
+            if !remote_map.contains_key(&rel) {
+                let _ = std::fs::remove_file(entry.path());
+            }
+        }
+
+        // 同步本地仓库对象索引
+        let local_index = repo_db.get_object_index().await?;
+        let local_paths: std::collections::HashSet<String> =
+            local_index.into_iter().map(|e| e.path).collect();
+        let remote_paths: std::collections::HashSet<String> =
+            remote_file_index.iter().map(|e| e.path.clone()).collect();
+
+        for p in local_paths.difference(&remote_paths) {
+            repo_db.remove_from_object_index(p).await?;
+        }
+        repo_db.update_object_index(remote_file_index).await?;
+
+        Ok(conflicts)
+    }
+
+    async fn calculate_ahead_behind(
+        &self,
+        repo_db: &RepositoryDatabase,
+        local_head: Option<&str>,
+        remote_head: Option<&str>,
+    ) -> Result<AheadBehind> {
+        match (local_head, remote_head) {
+            (Some(l), Some(r)) if !l.is_empty() && !r.is_empty() && l == r => Ok(AheadBehind {
+                ahead: 0,
+                behind: 0,
+                ahead_commits: vec![],
+                behind_commits: vec![],
+            }),
+            (Some(l), Some(r)) if !l.is_empty() && !r.is_empty() => {
+                let local_dist = self.collect_ancestor_distances(repo_db, l, 20000).await?;
+                let remote_dist = self.collect_ancestor_distances(repo_db, r, 20000).await?;
+
+                if let Some(dist) = local_dist.get(r) {
+                    let ahead_commits = self
+                        .trace_path_to_ancestor(repo_db, l, r, 20000)
+                        .await
+                        .unwrap_or_default();
+                    return Ok(AheadBehind {
+                        ahead: *dist as i32,
+                        behind: 0,
+                        ahead_commits,
+                        behind_commits: vec![],
+                    });
+                }
+
+                if let Some(dist) = remote_dist.get(l) {
+                    let behind_commits = self
+                        .trace_path_to_ancestor(repo_db, r, l, 20000)
+                        .await
+                        .unwrap_or_default();
+                    return Ok(AheadBehind {
+                        ahead: 0,
+                        behind: *dist as i32,
+                        ahead_commits: vec![],
+                        behind_commits,
+                    });
+                }
+
+                let mut best_common: Option<(&String, usize, usize)> = None;
+                for (cid, ld) in &local_dist {
+                    if let Some(rd) = remote_dist.get(cid) {
+                        match best_common {
+                            Some((_, bld, brd)) if ld + rd >= bld + brd => {}
+                            _ => best_common = Some((cid, *ld, *rd)),
+                        }
+                    }
+                }
+
+                if let Some((base, ahead_d, behind_d)) = best_common {
+                    let ahead_commits = self
+                        .trace_path_to_ancestor(repo_db, l, base, 20000)
+                        .await
+                        .unwrap_or_default();
+                    let behind_commits = self
+                        .trace_path_to_ancestor(repo_db, r, base, 20000)
+                        .await
+                        .unwrap_or_default();
+
+                    return Ok(AheadBehind {
+                        ahead: ahead_d as i32,
+                        behind: behind_d as i32,
+                        ahead_commits,
+                        behind_commits,
+                    });
+                }
+
+                Ok(AheadBehind {
+                    ahead: 1,
+                    behind: 1,
+                    ahead_commits: vec![l.to_string()],
+                    behind_commits: vec![r.to_string()],
+                })
+            }
+            (Some(l), None) if !l.is_empty() => Ok(AheadBehind {
+                ahead: 1,
+                behind: 0,
+                ahead_commits: vec![l.to_string()],
+                behind_commits: vec![],
+            }),
+            (None, Some(r)) if !r.is_empty() => Ok(AheadBehind {
+                ahead: 0,
+                behind: 1,
+                ahead_commits: vec![],
+                behind_commits: vec![r.to_string()],
+            }),
+            _ => Ok(AheadBehind {
+                ahead: 0,
+                behind: 0,
+                ahead_commits: vec![],
+                behind_commits: vec![],
+            }),
+        }
+    }
+
+    async fn collect_ancestor_distances(
+        &self,
+        repo_db: &RepositoryDatabase,
+        start_commit_id: &str,
+        max_nodes: usize,
+    ) -> Result<HashMap<String, usize>> {
+        let mut dist = HashMap::new();
+        let mut queue = VecDeque::new();
+
+        queue.push_back((start_commit_id.to_string(), 0usize));
+        while let Some((cid, d)) = queue.pop_front() {
+            if cid.is_empty() || dist.contains_key(&cid) || dist.len() >= max_nodes {
+                continue;
+            }
+
+            dist.insert(cid.clone(), d);
+            if let Some(commit) = repo_db.get_commit(&cid).await? {
+                for parent in commit.parent_ids {
+                    if !parent.is_empty() && !dist.contains_key(&parent) {
+                        queue.push_back((parent, d + 1));
+                    }
+                }
+            }
+        }
+
+        Ok(dist)
+    }
+
+    async fn trace_path_to_ancestor(
+        &self,
+        repo_db: &RepositoryDatabase,
+        start_commit_id: &str,
+        target_ancestor_id: &str,
+        max_nodes: usize,
+    ) -> Result<Vec<String>> {
+        if start_commit_id == target_ancestor_id {
+            return Ok(vec![]);
+        }
+
+        let mut queue = VecDeque::new();
+        let mut prev = HashMap::<String, String>::new();
+        let mut visited = HashMap::<String, bool>::new();
+
+        queue.push_back(start_commit_id.to_string());
+        visited.insert(start_commit_id.to_string(), true);
+
+        let mut found = false;
+        let mut visited_count = 0usize;
+
+        while let Some(cid) = queue.pop_front() {
+            visited_count += 1;
+            if visited_count >= max_nodes {
+                break;
+            }
+
+            if cid == target_ancestor_id {
+                found = true;
+                break;
+            }
+
+            if let Some(commit) = repo_db.get_commit(&cid).await? {
+                for parent in commit.parent_ids {
+                    if parent.is_empty() || visited.contains_key(&parent) {
+                        continue;
+                    }
+                    visited.insert(parent.clone(), true);
+                    prev.insert(parent.clone(), cid.clone());
+                    queue.push_back(parent);
+                }
+            }
+        }
+
+        if !found {
+            return Ok(vec![]);
+        }
+
+        let mut rev_path = Vec::new();
+        let mut current = target_ancestor_id.to_string();
+        while current != start_commit_id {
+            let p = match prev.get(&current) {
+                Some(v) => v.clone(),
+                None => break,
+            };
+            rev_path.push(p.clone());
+            current = p;
+        }
+
+        rev_path.reverse();
+        // 只返回 start 到 target 之前的提交（不包含 target 本身）
+        Ok(rev_path)
     }
 
     async fn apply_remote_repository_state(

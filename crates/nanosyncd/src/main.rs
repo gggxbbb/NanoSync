@@ -80,7 +80,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Run { db, debug } => {
             run_service(&db, debug).await?;
         }
-        Commands::Install { name: _ } => {
+        Commands::Install { name } => {
             #[cfg(windows)]
             {
                 service::windows::install_service(&name)?;
@@ -91,7 +91,7 @@ async fn main() -> anyhow::Result<()> {
                 println!("请手动配置 systemd 或其他 init 系统");
             }
         }
-        Commands::Uninstall { name: _ } => {
+        Commands::Uninstall { name } => {
             #[cfg(windows)]
             {
                 service::windows::uninstall_service(&name)?;

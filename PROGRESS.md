@@ -39,6 +39,10 @@
   - push: 上传本地缺失对象到远端 `.nanosync/objects`
   - fetch/pull: 基于远端 `.nanosync/object_index.json` 下载本地缺失对象
 - pull 新增最小快进元数据应用：可按远端状态更新本地分支 head 与默认分支
+- ahead/behind 计算增强：支持基于提交 DAG 的祖先距离计算
+- pull 安全检查：工作区存在未提交变更时拒绝应用远端状态
+- pull 内容级最小落地：按远端文件索引更新本地工作区（写入/更新/删除）并同步本地对象索引
+- 修复 `nanosyncd` 编译错误：`main.rs` 中 Install/Uninstall 命令分支错误丢弃 `name` 参数导致未定义变量，已修复并通过编译
 - 新增根目录 `README.md`，补充 Rust workspace 架构、启动方式、已实现能力与已知缺口
 
 ### 1. 项目结构 ✅
@@ -127,7 +131,7 @@
 ### 同步引擎实际实现
 - 冲突检测和处理
 - 增量同步优化（当前对象传输为基础实现，尚未做精细差量策略）
-- ahead/behind 细粒度计算（当前为基于本地/远端 head 的最小实现）
+- ahead/behind 精细化策略与性能优化（当前已支持 DAG 距离计算）
 
 ### 其他
 - 合并冲突处理
