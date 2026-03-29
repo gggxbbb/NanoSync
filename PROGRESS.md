@@ -1,6 +1,6 @@
 # NanoSync Rust TUI 项目进度记录
 
-**最后更新**: 2026-03-28 (UTC+8)
+**最后更新**: 2026-03-29 (UTC+8)
 
 ## 项目概述
 
@@ -18,6 +18,28 @@
 | nanosync-tui | ✅ 编译成功 | TUI 前端 |
 
 ## 已完成的工作
+
+### 0. 本轮增量 (2026-03-29) ✅
+- 远程连接测试不再固定返回成功：
+  - SMB: 增加 TCP 可达性探测（端口超时检测）
+  - WebDAV: 增加 HTTP OPTIONS 探测（支持基础认证，返回真实 HTTP 状态）
+  - UNC: 通过 UNC 路径可达性返回成功/失败
+- WebDAV 文件操作新增基础实现：
+  - 下载（GET）、上传（PUT）、删除（DELETE）
+  - 目录确保存在（MKCOL）
+  - 文件存在性/元信息（HEAD）
+  - 基础目录列举（PROPFIND 结果解析）
+- 删除远程连接前新增“仓库引用检查”，防止误删被绑定连接
+- 同步引擎新增最小可用状态同步能力：
+  - fetch: 可拉取远端 `repository_state.json`（WebDAV/UNC）并计算 ahead/behind（不再固定 0）
+  - push: 可导出并上传本地 `repository_state.json`（WebDAV/UNC）
+  - get_sync_status: 改为基于 fetch 结果返回
+  - 新增 SMB 路径支持：可按 share 路径（如 `/public/project`）拉取/推送状态文件
+- 对象传输新增基础实现：
+  - push: 上传本地缺失对象到远端 `.nanosync/objects`
+  - fetch/pull: 基于远端 `.nanosync/object_index.json` 下载本地缺失对象
+- pull 新增最小快进元数据应用：可按远端状态更新本地分支 head 与默认分支
+- 新增根目录 `README.md`，补充 Rust workspace 架构、启动方式、已实现能力与已知缺口
 
 ### 1. 项目结构 ✅
 - 创建了 Cargo workspace 结构
@@ -48,9 +70,9 @@
 
 - **远程连接** (`remote/`)
   - `manager.rs` - 远程连接管理器（含直接测试功能）
-  - `smb.rs` - SMB 客户端 (stub)
-  - `webdav.rs` - WebDAV 客户端 (stub)
-  - `unc.rs` - UNC 路径处理 (stub)
+  - `smb.rs` - SMB 客户端（已实现基础 TCP 可达性检测）
+  - `webdav.rs` - WebDAV 客户端（已实现基础 HTTP 连通性检测）
+  - `unc.rs` - UNC 路径处理
 
 - **同步引擎** (`sync/engine.rs`)
   - fetch/push/pull/sync 操作 (基础框架)
@@ -99,15 +121,13 @@
 ## 待实现的功能
 
 ### 远程连接实际实现 (Stub)
-- SMB 客户端实际连接实现
-- WebDAV 客户端实际连接实现
-- UNC 路径处理
+- SMB 协议级增强（共享自动枚举、严格凭证校验）
+- WebDAV 完整兼容性增强（复杂服务端 PROPFIND 解析、递归列举、权限细分）
 
 ### 同步引擎实际实现
-- 实际的文件同步逻辑（对象传输）
 - 冲突检测和处理
-- 增量同步
-- ahead/behind 实际计算
+- 增量同步优化（当前对象传输为基础实现，尚未做精细差量策略）
+- ahead/behind 细粒度计算（当前为基于本地/远端 head 的最小实现）
 
 ### 其他
 - 合并冲突处理

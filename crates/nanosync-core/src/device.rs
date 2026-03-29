@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::env;
+use std::process::Command;
 use thiserror::Error;
 
 #[derive(Debug, Error)]

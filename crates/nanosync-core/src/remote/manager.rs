@@ -1,9 +1,14 @@
 //! 远程连接管理器
 
 use crate::database::DatabaseManager;
+use crate::database::RepositoryDatabase;
 use crate::error::{Error, Result};
 use crate::models::*;
+use crate::remote::smb::SmbClient;
+use crate::remote::unc::UncClient;
+use crate::remote::webdav::WebDavClient;
 use std::sync::Arc;
+use std::time::Instant;
 
 /// 远程连接管理器
 pub struct RemoteConnectionManager {
@@ -42,8 +47,17 @@ impl RemoteConnectionManager {
 
     /// 删除远程连接
     pub async fn delete_connection(&self, id: i64) -> Result<()> {
-        // 检查是否被仓库使用
-        // TODO: 实现检查逻辑
+        let repositories = self.db.list_repositories().await?;
+        for repo in repositories {
+            let repo_db = RepositoryDatabase::open(std::path::Path::new(&repo.local_path), repo.id).await?;
+            let remotes = repo_db.list_repository_remotes().await?;
+            if remotes.iter().any(|r| r.connection_id == id) {
+                return Err(Error::InvalidConfig(format!(
+                    "远程连接正在被仓库 '{}' 使用，无法删除",
+                    repo.name
+                )));
+            }
+        }
         
         self.db.delete_remote_connection(id).await
     }
@@ -85,57 +99,79 @@ impl RemoteConnectionManager {
     }
 
     /// 测试 SMB 连接
-    async fn test_smb_connection(&self, _conn: &RemoteConnection, _test_path: Option<&str>) -> Result<ConnectionTestResult> {
-        // TODO: 实现真实的 SMB 连接测试
-        // 使用 strictCredentialCheck 进行严格凭证校验
-        
-        Ok(ConnectionTestResult {
-            success: true,
-            message: "SMB 连接测试成功".to_string(),
-            details: Some(ConnectionTestDetails {
-                can_read: true,
-                can_write: true,
-                can_list: true,
-                latency_ms: Some(50),
-                share_list: None,
+    async fn test_smb_connection(&self, conn: &RemoteConnection, _test_path: Option<&str>) -> Result<ConnectionTestResult> {
+        let client = SmbClient::new(
+            &conn.host,
+            conn.port.unwrap_or(445) as u16,
+            conn.username.as_deref(),
+            conn.password.as_deref(),
+        );
+
+        let start = Instant::now();
+        match client.connect().await {
+            Ok(_) => {
+                let latency_ms = start.elapsed().as_millis() as u64;
+                Ok(ConnectionTestResult {
+                    success: true,
+                    message: "SMB 网络可达（当前未执行协议级共享与写入校验）".to_string(),
+                    details: Some(ConnectionTestDetails {
+                        can_read: true,
+                        can_write: false,
+                        can_list: false,
+                        latency_ms: Some(latency_ms),
+                        share_list: None,
+                    }),
+                })
+            }
+            Err(e) => Ok(ConnectionTestResult {
+                success: false,
+                message: format!("SMB 连接失败: {}", e),
+                details: Some(ConnectionTestDetails {
+                    can_read: false,
+                    can_write: false,
+                    can_list: false,
+                    latency_ms: None,
+                    share_list: None,
+                }),
             }),
-        })
+        }
     }
 
     /// 测试 WebDAV 连接
-    async fn test_webdav_connection(&self, _conn: &RemoteConnection, _test_path: Option<&str>) -> Result<ConnectionTestResult> {
-        // TODO: 实现真实的 WebDAV 连接测试
-        // 包括 ping、目录访问、可写性验证
-        
-        Ok(ConnectionTestResult {
-            success: true,
-            message: "WebDAV 连接测试成功".to_string(),
-            details: Some(ConnectionTestDetails {
-                can_read: true,
-                can_write: true,
-                can_list: true,
-                latency_ms: Some(100),
-                share_list: None,
-            }),
-        })
+    async fn test_webdav_connection(&self, conn: &RemoteConnection, test_path: Option<&str>) -> Result<ConnectionTestResult> {
+        let config = WebDavConfig::from_connection(conn, test_path.unwrap_or("/"));
+        let client = WebDavClient::new(&config);
+        client.test_connection(&config.path).await
     }
 
     /// 测试 UNC 连接
     async fn test_unc_connection(&self, conn: &RemoteConnection, _test_path: Option<&str>) -> Result<ConnectionTestResult> {
-        // TODO: 实现真实的 UNC 路径可达性检测
-        
-        let unc_path = format!("\\\\{}", conn.host);
-        
-        Ok(ConnectionTestResult {
-            success: true,
-            message: format!("UNC 路径可达: {}", unc_path),
-            details: Some(ConnectionTestDetails {
-                can_read: true,
-                can_write: true,
-                can_list: true,
-                latency_ms: Some(30),
-                share_list: None,
+        let client = UncClient::new(&conn.host, None);
+        let path = _test_path.unwrap_or("\\");
+
+        match client.test_connection(path).await {
+            Ok(_) => Ok(ConnectionTestResult {
+                success: true,
+                message: format!("UNC 路径可达: {}", client.unc_path(path)),
+                details: Some(ConnectionTestDetails {
+                    can_read: true,
+                    can_write: true,
+                    can_list: true,
+                    latency_ms: None,
+                    share_list: None,
+                }),
             }),
-        })
+            Err(e) => Ok(ConnectionTestResult {
+                success: false,
+                message: format!("UNC 路径不可达: {}", e),
+                details: Some(ConnectionTestDetails {
+                    can_read: false,
+                    can_write: false,
+                    can_list: false,
+                    latency_ms: None,
+                    share_list: None,
+                }),
+            }),
+        }
     }
 }
